@@ -11,3 +11,6 @@ model = post_dc_primal(data, Model(solver=CplexSolver()))
 
 status = solve(model)
 
+model = post_dc_dual(data, Model(solver=CplexSolver()))
+
+status = solve(model)
