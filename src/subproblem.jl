@@ -34,7 +34,7 @@ function post_dc_primal(data::Dict{String,Any}, model=Model())
 
     for (i, gen) in ref[:gen]
         push!(pgmin_cons, @constraint(model, pg[i] >= gen["pmin"]))
-        push!(pgmax_cons, @constraint(model, pg[i] <= gen["pmin"]))
+        push!(pgmax_cons, @constraint(model, pg[i] <= gen["pmax"]))
     end
 
     for (l,i,j) in ref[:arcs_from]
