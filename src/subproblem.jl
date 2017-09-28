@@ -93,7 +93,7 @@ function post_dc_dual(data::Dict{String,Any}, model=Model())
         bus_arcs = ref[:bus_arcs][i] 
         push!(va_dual_cons, 
               @constraint(model, 
-              sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (thermal_min_dual[l] + thermal_max_dual[l]) for (l,f,t) in bus_arcs) == 0))
+              sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dc_lb_dual[l] + dc_ub_dual[l]) for (l,f,t) in bus_arcs) == 0))
     end
 
     for (i, gen) in ref[:gen]
