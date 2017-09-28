@@ -1,14 +1,13 @@
 using JuMP
 using PowerModels
 using CPLEX
-
+ 
 PMs = PowerModels
 
 include("parse.jl")
 include("utils.jl")
 include("subproblem.jl")
 
-<<<<<<< HEAD
 # setting up configuration for the run
 config = parse_commandline()
 config["casefile"] = string(config["path"], config["file"])
@@ -28,15 +27,3 @@ config["scenariofile"] = string(config["path"], "scenario_data/case", length(key
 scenarios = fetch_scenarios(config)
 @assert size(scenarios)[1] == config["batchsize"]
 
-=======
-data = PMs.parse_file("../data/pglib_opf_case24_ieee_rts.m")
-m_primal = post_dc_primal(data, Model(solver=CplexSolver()))
-
-status = solve(m_primal)
-
-m_dual = post_dc_dual(data, Model(solver=CplexSolver()))
-
-status = solve(m_dual)
-
-@assert getobjectivevalue(m_primal) == getobjectivevalue(m_dual)
->>>>>>> 045419e64ee1bd9f71eac1a45d58670b9183958e
