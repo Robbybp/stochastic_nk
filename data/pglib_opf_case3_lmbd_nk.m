@@ -72,6 +72,20 @@ mpc.branch = [
 	1	 2	 0.042	 0.9	 0.3	 9000.0	 0.0	 0.0	 0.0	 0.0	 1	 -30.0	 30.0;
 ];
 
+%column_names% prob
+mpc.branch_prob = [
+0.5;
+0.5;
+0.5;
+];
+
+%column_names% prob
+mpc.gen_prob = [
+0.5;
+0.5;
+0.5;
+];
+
 % INFO    : === Translation Options ===
 % INFO    : Phase Angle Bound:           30.0 (deg.)
 % INFO    : Setting Flat Start
