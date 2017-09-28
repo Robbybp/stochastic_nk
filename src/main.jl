@@ -7,7 +7,7 @@
  include("parse.jl")
  include("utils.jl")
  include("subproblem.jl")
-
+ 
  # setting up configuration for the run
  config = parse_commandline()
  config["casefile"] = string(config["path"], config["file"])
@@ -26,4 +26,4 @@
  (!isfile(config["scenariofile"])) && (println(">> scenario file does not exist, quitting program ..."); quit())
  scenarios = fetch_scenarios(config)
  @assert size(scenarios)[1] == config["batchsize"]
-
+ 
