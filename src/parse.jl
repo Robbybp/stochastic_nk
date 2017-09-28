@@ -48,6 +48,11 @@ function parse_commandline()
         help = "interdict lines or (lines and generators) (l/lg)"
         arg_type = String
         default = "lg"
+
+        "--budget", "-k"
+        help = "budget for interdiction "
+        arg_type = Int
+        default = 2
     end
 
     return parse_args(s)

@@ -6,7 +6,7 @@ PMs = PowerModels
 
 include("parse.jl")
 include("utils.jl")
-include("subproblem.jl")
+include("full_model.jl")
 
 PMs = PowerModels
  
@@ -33,3 +33,6 @@ config["scenariofile"] = string(config["path"], "scenario_data/case", length(key
 scenarios = fetch_scenarios(config)
 @assert size(scenarios)[1] == config["batchsize"]
 
+if (config["algo"] == "full")
+    m = create_full_model(scenarios, ref, config, model=Model(solver=CplexSolver()))
+end
