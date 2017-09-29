@@ -1,6 +1,6 @@
 
 function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}; model=Model())
-    
+
     ref = ref[:nw][0]
     numscenarios = config["numscenarios"]
 
@@ -41,23 +41,24 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
     for (b, bus) in ref[:bus]
         bus_arcs = ref[:bus_arcs][b]
         bus_gens = ref[:bus_gens][b]
-        
+
         for s in 1:numscenarios
             p_expr = Dict([((l,i,j), 1.0*p[(l,i,j),s]) for (l,i,j) in ref[:arcs_from]])
             p_expr = merge(p_expr, Dict([((l,j,i), -1.0*p[(l,i,j),s]) for (l,i,j) in ref[:arcs_from]]))
             @constraint(model, sum(p_expr[a] for a in bus_arcs) - sum(pg[g,s] for g in bus_gens)  - ld[b,s]*bus["pd"] == - bus["pd"])
         end
-        
+
     end
 
     # (b) generation limits
-    for i in 1:length(keys(ref[:gen]))
-        gen_id = collect(keys(ref[:gen]))[i]
+    for k in 1:length(keys(ref[:gen]))
+        gen_id = collect(keys(ref[:gen]))[k]
         gen = ref[:gen][gen_id]
-        @constraint(model, [s=1:numscenarios], pg[gen_id,s] >= (1-y[gen_id]*scenarios[s,i]) * gen["pmin"])
-        @constraint(model, [s=1:numscenarios], pg[gen_id,s] <= (1-y[gen_id]*scenarios[s,i]) * gen["pmax"])
+        col_index = k
+        @constraint(model, [s=1:numscenarios], pg[gen_id,s] >= (1-y[gen_id]*scenarios[s,col_index]) * gen["pmin"])
+        @constraint(model, [s=1:numscenarios], pg[gen_id,s] <= (1-y[gen_id]*scenarios[s,col_index]) * gen["pmax"])
     end
-    
+
     # (c) thermal limits
     for k in 1:length(ref[:arcs_from])
         l, i, j = ref[:arcs_from][k]
@@ -65,7 +66,7 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
         @constraint(model, [s=1:numscenarios], p[(l,i,j),s] >= -ref[:branch][l]["rate_a"] * (1-x[l]*scenarios[s,col_index]))
         @constraint(model, [s=1:numscenarios], p[(l,i,j),s] <= ref[:branch][l]["rate_a"] * (1-x[l]*scenarios[s,col_index]))
     end
-    
+
     # dc power flow
     for k in 1:length(keys(ref[:branch]))
         i = collect(keys(ref[:branch]))[k]
@@ -75,7 +76,7 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
         f_idx = (i, branch["f_bus"], branch["t_bus"])
 
         g, b = PMs.calc_branch_y(branch)
-    
+
         for s in 1:numscenarios
             p_fr = p[f_idx,s]
             va_fr = va[branch["f_bus"],s]
@@ -91,45 +92,42 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
         @constraint(model, [s=1:numscenarios], ld[i,s] <= 1)
     end
 
-    println(model)
-    quit()
-    
     # dual constraints
     # (a) constraints corresponding to primal variable va
     for (i, bus) in ref[:bus]
-        bus_arcs = ref[:bus_arcs][i] 
-        push!(va_cons, 
-              @constraint(model, 
-              sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (tmin[l] + tmax[l]) for (l,f,t) in bus_arcs) == 0))
+        bus_arcs = ref[:bus_arcs][i]
+        @constraint(model, [s=1:numscenarios], sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (tmin[l,s] + tmax[l,s]) for (l,f,t) in bus_arcs) == 0)
     end
-    
+
     # constraints corresponding to primal variable pg
     for (i, gen) in ref[:gen]
-        push!(pg_cons, @constraint(model, -kcl[gen["gen_bus"]] + pgmin[i] - pgmax[i] == 0))
+         @constraint(model, [s=1:numscenarios], -kcl[gen["gen_bus"],s] + pgmin[i,s] - pgmax[i,s] == 0)
     end
 
     # constraints corresponding to primal variable p
     for (l,i,j) in ref[:arcs_from]
-        push!(p_cons, @constraint(model, kcl[i] - kcl[j] + tmin[l] - tmax[l] + dclb[l] - dcub[l] == 0))
+        @constraint(model, [s=1:numscenarios], kcl[i,s] - kcl[j,s] + tmin[l,s] - tmax[l,s] + dclb[l,s] - dcub[l,s] == 0)
     end
 
     # constraints corresponding to primal variable ld
     for (i, bus) in ref[:bus]
-        push!(ld_cons, @constraint(model, -bus["pd"]*kcl[i] - loadshed[i] <= bus["pd"]))
+        @constraint(model, [s=1:numscenarios], -bus["pd"]*kcl[i,s] - loadshed[i,s] <= bus["pd"])
     end
 
+    println(model)
+    quit()
 
-    # primal objective == dual 
-    @expression(model, primalobj_expr, sum( ref[:bus][i]["pd"] * ld[i] for i in keys(ref[:bus]) ) )
-    @expression(model, dualobj_expr, 
+    # primal objective == dual
+    @expression(model, primalobj_expr[s=1:numscenarios], sum( ref[:bus][i]["pd"] * ld[i,s] for i in keys(ref[:bus]) ) )
+    @expression(model, dualobj_expr[s=1:numscenarios],
                                 sum( -ref[:bus][i]["pd"] * kcl[i] for i in keys(ref[:bus]) ) +
                                 sum( ref[:gen][i]["pmin"] * pgmin[i] - ref[:gen][i]["pmax"] * pgmax[i] for i in keys(ref[:gen]) ) +
                                 sum( -ref[:branch][l]["rate_a"] * tmin[l] - ref[:branch][l]["rate_a"] * tmax[l] for l in keys(ref[:branch]) ) +
-                                sum( 0 + 0 for i in keys(ref[:branch]) ) + 
+                                sum( 0 + 0 for i in keys(ref[:branch]) ) +
                                 sum( -loadshed[i] for i in keys(ref[:bus]) )
                                 )
-    
-    push!(pdeq_cons, @constraint(model, primalobj_expr - dualobj_expr == 0))
+
+    @constraint(model, [s=1:numscenarios], primalobj_expr[s] - dualobj_expr[s] == 0)
 
 
 
