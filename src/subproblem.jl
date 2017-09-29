@@ -2,8 +2,25 @@
 primal and dual sub-problems
 """
 
-function post_dc_primal(data::Dict{String,Any}, model=Model())
-    ref = PMs.build_ref(data)
+function post_dc_primal(data::Dict{String,Any}, scenarios, model=Model())
+    data_c = data
+    
+    for i in 1:length(keys(data_c["gen"]))
+        gen_id = collect(keys(data_c["gen"]))[i]
+        if scenarios[i] == 1
+            data_c["gen"][gen_id]["gen_status"] = 0
+        end
+    end
+
+    for i in 1:length(keys(data_c["branch"]))
+        branch_id = collect(keys(data_c["branch"]))[i]
+        if scenarios[i+length(keys(data_c["gen"]))] == 1
+            data_c["branch"][branch_id]["br_status"] = 0
+        end
+    end
+
+        
+    ref = PMs.build_ref(data_c)
     
     ref = ref[:nw][0]
 
@@ -66,8 +83,25 @@ function post_dc_primal(data::Dict{String,Any}, model=Model())
     
 end
 
-function post_dc_dual(data::Dict{String,Any}, model=Model())
-    ref = PMs.build_ref(data)
+function post_dc_dual(data::Dict{String,Any}, scenarios, model=Model())
+    data_c = data
+    
+    for i in 1:length(keys(data_c["gen"]))
+        gen_id = collect(keys(data_c["gen"]))[i]
+        if scenarios[i] == 1
+            data_c["gen"][gen_id]["gen_status"] = 0
+        end
+    end
+
+    for i in 1:length(keys(data_c["branch"]))
+        branch_id = collect(keys(data_c["branch"]))[i]
+        if scenarios[i+length(keys(data_c["gen"]))] == 1
+            data_c["branch"][branch_id]["br_status"] = 0
+        end
+    end
+
+        
+    ref = PMs.build_ref(data_c)
 
     ref = ref[:nw][0]
 
@@ -121,8 +155,25 @@ function post_dc_dual(data::Dict{String,Any}, model=Model())
 
 end
 
-function post_dc_kkt(data::Dict{String,Any}, model=Model())
-    ref = PMs.build_ref(data)
+function post_dc_kkt(data::Dict{String,Any}, scenarios, model=Model())
+    data_c = data
+    
+    for i in 1:length(keys(data_c["gen"]))
+        gen_id = collect(keys(data_c["gen"]))[i]
+        if scenarios[i] == 1
+            data_c["gen"][gen_id]["gen_status"] = 0
+        end
+    end
+
+    for i in 1:length(keys(data_c["branch"]))
+        branch_id = collect(keys(data_c["branch"]))[i]
+        if scenarios[i+length(keys(data_c["gen"]))] == 1
+            data_c["branch"][branch_id]["br_status"] = 0
+        end
+    end
+
+        
+    ref = PMs.build_ref(data_c)
     
     ref = ref[:nw][0]
     
@@ -249,6 +300,6 @@ function post_dc_kkt(data::Dict{String,Any}, model=Model())
     push!(pdeq_cons, @constraint(model, primalobj_expr - dualobj_expr == 0))
 
 
-    return model, primalobj_expr
+    return model
 
 end

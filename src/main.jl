@@ -7,6 +7,7 @@ PMs = PowerModels
 include("parse.jl")
 include("utils.jl")
 include("full_model.jl")
+include("subproblem.jl")
 
 PMs = PowerModels
  
@@ -34,5 +35,19 @@ scenarios = fetch_scenarios(config)
 @assert size(scenarios)[1] == config["batchsize"]
 
 if (config["algo"] == "full")
+    #mp = post_dc_primal(data, scenarios, Model(solver=CplexSolver())) 
+    #solve(mp)
+    #println(">> obj primal first scenario: $(getobjectivevalue(mp))")
+    #md = post_dc_dual(data, scenarios, Model(solver=CplexSolver())) 
+    #solve(md)
+    #println(">> obj dual first scenario: $(getobjectivevalue(md))")
+    kkt = post_dc_kkt(data, scenarios, Model(solver=CplexSolver())) 
+    println(kkt)
+    solve(kkt)
+    println(">> obj kkt first scenario: $(getobjectivevalue(kkt))")
     m = create_full_model(scenarios, ref, config, model=Model(solver=CplexSolver()))
+    solve(m)
+    println(m)
+    println(">> obj: $(getobjectivevalue(m))")
+    println(">> $(getvalue(getindex(m, :x)))")
 end
