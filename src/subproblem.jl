@@ -2,25 +2,29 @@
 primal and dual sub-problems
 """
 
-function post_dc_primal(data::Dict{String,Any}, scenarios, model=Model())
-    data_c = data
+function post_dc_primal(data::Dict{String,Any}, scenarios, model=Model())   
+    ref = PMs.build_ref(data)
     
-    for i in 1:length(keys(data_c["gen"]))
-        gen_id = collect(keys(data_c["gen"]))[i]
+    ref = ref[:nw][0]
+    
+    gen_keys = collect(keys(ref[:gen]))
+    br_keys = collect(keys(ref[:branch]))
+
+    for i in 1:length(gen_keys)
+        gen_id = gen_keys[i]
         if scenarios[i] == 1
-            data_c["gen"][gen_id]["gen_status"] = 0
+            delete!(data["gen"], string(gen_id))
         end
     end
 
-    for i in 1:length(keys(data_c["branch"]))
-        branch_id = collect(keys(data_c["branch"]))[i]
-        if scenarios[i+length(keys(data_c["gen"]))] == 1
-            data_c["branch"][branch_id]["br_status"] = 0
+    for i in 1:length(br_keys)
+        branch_id = br_keys[i]
+        if scenarios[i+length(br_keys)] == 1
+            delete!(data["gen"], string(branch_id))
         end
     end
 
-        
-    ref = PMs.build_ref(data_c)
+    ref = PMs.build_ref(data)
     
     ref = ref[:nw][0]
 
@@ -84,25 +88,29 @@ function post_dc_primal(data::Dict{String,Any}, scenarios, model=Model())
 end
 
 function post_dc_dual(data::Dict{String,Any}, scenarios, model=Model())
-    data_c = data
+    ref = PMs.build_ref(data)
     
-    for i in 1:length(keys(data_c["gen"]))
-        gen_id = collect(keys(data_c["gen"]))[i]
+    ref = ref[:nw][0]
+    
+    gen_keys = collect(keys(ref[:gen]))
+    br_keys = collect(keys(ref[:branch]))
+
+    for i in 1:length(gen_keys)
+        gen_id = gen_keys[i]
         if scenarios[i] == 1
-            data_c["gen"][gen_id]["gen_status"] = 0
+            delete!(data["gen"], string(gen_id))
         end
     end
 
-    for i in 1:length(keys(data_c["branch"]))
-        branch_id = collect(keys(data_c["branch"]))[i]
-        if scenarios[i+length(keys(data_c["gen"]))] == 1
-            data_c["branch"][branch_id]["br_status"] = 0
+    for i in 1:length(br_keys)
+        branch_id = br_keys[i]
+        if scenarios[i+length(br_keys)] == 1
+            delete!(data["gen"], string(branch_id))
         end
     end
 
-        
-    ref = PMs.build_ref(data_c)
-
+    ref = PMs.build_ref(data)
+    
     ref = ref[:nw][0]
 
     @variable(model, kcl[i in keys(ref[:bus])])
@@ -156,24 +164,28 @@ function post_dc_dual(data::Dict{String,Any}, scenarios, model=Model())
 end
 
 function post_dc_kkt(data::Dict{String,Any}, scenarios, model=Model())
-    data_c = data
+    ref = PMs.build_ref(data)
     
-    for i in 1:length(keys(data_c["gen"]))
-        gen_id = collect(keys(data_c["gen"]))[i]
+    ref = ref[:nw][0]
+    
+    gen_keys = collect(keys(ref[:gen]))
+    br_keys = collect(keys(ref[:branch]))
+
+    for i in 1:length(gen_keys)
+        gen_id = gen_keys[i]
         if scenarios[i] == 1
-            data_c["gen"][gen_id]["gen_status"] = 0
+            delete!(data["gen"], string(gen_id))
         end
     end
 
-    for i in 1:length(keys(data_c["branch"]))
-        branch_id = collect(keys(data_c["branch"]))[i]
-        if scenarios[i+length(keys(data_c["gen"]))] == 1
-            data_c["branch"][branch_id]["br_status"] = 0
+    for i in 1:length(br_keys)
+        branch_id = br_keys[i]
+        if scenarios[i+length(br_keys)] == 1
+            delete!(data["gen"], string(branch_id))
         end
     end
 
-        
-    ref = PMs.build_ref(data_c)
+    ref = PMs.build_ref(data)
     
     ref = ref[:nw][0]
     
