@@ -84,8 +84,10 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
             va_fr = va[branch["f_bus"],s]
             va_to = va[branch["t_bus"],s]
 
-            @constraint(model, p_fr + b*(va_fr - va_to) >= ref[:off_angmin]*x[i]*scenarios[s,col_index])
-            @constraint(model, p_fr + b*(va_fr - va_to) <= ref[:off_angmax]*x[i]*scenarios[s,col_index])
+            #@constraint(model, p_fr + b*(va_fr - va_to) >= ref[:off_angmin]*x[i]*scenarios[s,col_index])
+            #@constraint(model, p_fr + b*(va_fr - va_to) <= ref[:off_angmax]*x[i]*scenarios[s,col_index])
+            @constraint(model, p_fr + b*(va_fr - va_to) >= -1000*x[i]*scenarios[s,col_index])
+            @constraint(model, p_fr + b*(va_fr - va_to) <= 1000*x[i]*scenarios[s,col_index])
         end
     end
 
@@ -98,7 +100,7 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
     # (a) constraints corresponding to primal variable va
     for (i, bus) in ref[:bus]
         bus_arcs = ref[:bus_arcs][i]
-        @constraint(model, [s=1:numscenarios], sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (tmin[l,s] + tmax[l,s]) for (l,f,t) in bus_arcs) == 0)
+        @constraint(model, [s=1:numscenarios], sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l,s] - dcub[l,s]) for (l,f,t) in bus_arcs) == 0)
     end
 
     # constraints corresponding to primal variable pg
@@ -165,25 +167,25 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
                 )
 
     @expression(model, pgmax_expr[s=1:numscenarios], 
-                sum( -ref[:gen][i]["pmax"] * pgmin[i,s] for i in keys(ref[:gen]) ) +
-                sum( scenarios[s,i] * ref[:gen][collect(keys(ref[:gen]))[i]]["pmax"] * ypgmin[collect(keys(ref[:gen]))[i],s] for i in 1:length(keys(ref[:gen])) )
+                sum( -ref[:gen][i]["pmax"] * pgmax[i,s] for i in keys(ref[:gen]) ) +
+                sum( scenarios[s,i] * ref[:gen][collect(keys(ref[:gen]))[i]]["pmax"] * ypgmax[collect(keys(ref[:gen]))[i],s] for i in 1:length(keys(ref[:gen])) )
                 )
 
     @expression(model, tmin_expr[s=1:numscenarios], 
-                sum( -ref[:branch][l]["rate_a"] for l in keys(ref[:branch]) ) +
+                sum( -ref[:branch][l]["rate_a"] * tmin[l,s] for l in keys(ref[:branch]) ) +
                 sum( ref[:branch][ref[:arcs_from][k][1]]["rate_a"] * scenarios[s,length(keys(ref[:gen]))+k] * xtmin[ref[:arcs_from][k][1],s] 
                     for k in 1:length(ref[:arcs_from]) )
                 )
 
     @expression(model, tmax_expr[s=1:numscenarios], 
-                sum( -ref[:branch][l]["rate_a"] for l in keys(ref[:branch]) ) +
+                sum( -ref[:branch][l]["rate_a"] * tmax[l,s] for l in keys(ref[:branch]) ) +
                 sum( ref[:branch][ref[:arcs_from][k][1]]["rate_a"] * scenarios[s,length(keys(ref[:gen]))+k] * xtmax[ref[:arcs_from][k][1],s] 
                     for k in 1:length(ref[:arcs_from]) )
                 )
 
     @expression(model, dc_expr[s=1:numscenarios], 
-                sum( ref[:off_angmin] * scenarios[s,length(keys(ref[:gen]))+k] * xdclb[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) -
-                sum( -ref[:off_angmax] * scenarios[s,length(keys(ref[:gen]))+k] * xdcub[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) )
+                sum( -1000 * scenarios[s,length(keys(ref[:gen]))+k] * xdclb[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) +
+                sum( -1000 * scenarios[s,length(keys(ref[:gen]))+k] * xdcub[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) )
                )
 
     
@@ -197,7 +199,7 @@ end
 
 function add_reformulation(model, xy, x_bin, y_cont, y_ub)
     
-    @constraint(model, xy >= y_cont + (x_bin-1)*y_ub)
+    @constraint(model, xy >= y_cont - (1-x_bin)*y_ub)
     @constraint(model, xy <= y_cont)
     @constraint(model, xy <= y_ub*x_bin)
 

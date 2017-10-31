@@ -9,18 +9,20 @@ function post_dc_primal(data::Dict{String,Any}, scenarios, model=Model())
     
     gen_keys = collect(keys(ref[:gen]))
     br_keys = collect(keys(ref[:branch]))
-
+    
     for i in 1:length(gen_keys)
         gen_id = gen_keys[i]
         if scenarios[i] == 1
-            delete!(data["gen"], string(gen_id))
+            # delete!(data["gen"], string(gen_id))
+            data["gen"][string(gen_id)]["gen_status"] = 0
         end
     end
 
     for i in 1:length(br_keys)
         branch_id = br_keys[i]
         if scenarios[i+length(br_keys)] == 1
-            delete!(data["gen"], string(branch_id))
+            # delete!(data["branch"], string(branch_id))
+            data["branch"][string(branch_id)]["br_status"] = 0
         end
     end
 
@@ -98,14 +100,16 @@ function post_dc_dual(data::Dict{String,Any}, scenarios, model=Model())
     for i in 1:length(gen_keys)
         gen_id = gen_keys[i]
         if scenarios[i] == 1
-            delete!(data["gen"], string(gen_id))
+            # delete!(data["gen"], string(gen_id))
+            data["gen"][string(gen_id)]["gen_status"] = 0
         end
     end
 
     for i in 1:length(br_keys)
         branch_id = br_keys[i]
         if scenarios[i+length(br_keys)] == 1
-            delete!(data["gen"], string(branch_id))
+            # delete!(data["branch"], string(branch_id))
+            data["branch"][string(branch_id)]["br_status"] = 0
         end
     end
 
@@ -135,7 +139,7 @@ function post_dc_dual(data::Dict{String,Any}, scenarios, model=Model())
         bus_arcs = ref[:bus_arcs][i] 
         push!(va_cons, 
               @constraint(model, 
-                          sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l] + dcub[l]) for (l,f,t) in bus_arcs) == 0))
+                          sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l] - dcub[l]) for (l,f,t) in bus_arcs) == 0))
     end
 
     for (i, gen) in ref[:gen]
@@ -171,6 +175,7 @@ function post_dc_kkt(data::Dict{String,Any}, scenarios, model=Model())
     gen_keys = collect(keys(ref[:gen]))
     br_keys = collect(keys(ref[:branch]))
 
+
     for i in 1:length(gen_keys)
         gen_id = gen_keys[i]
         if scenarios[i] == 1
@@ -181,14 +186,14 @@ function post_dc_kkt(data::Dict{String,Any}, scenarios, model=Model())
     for i in 1:length(br_keys)
         branch_id = br_keys[i]
         if scenarios[i+length(br_keys)] == 1
-            delete!(data["gen"], string(branch_id))
+            delete!(data["branch"], string(branch_id))
         end
     end
-
+    
     ref = PMs.build_ref(data)
     
     ref = ref[:nw][0]
-    
+
     # primal variables
     @variable(model, va[i in keys(ref[:bus])])
     @variable(model, pg[i in keys(ref[:gen])])
@@ -280,7 +285,7 @@ function post_dc_kkt(data::Dict{String,Any}, scenarios, model=Model())
         bus_arcs = ref[:bus_arcs][i] 
         push!(va_cons, 
               @constraint(model, 
-              sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (tmin[l] + tmax[l]) for (l,f,t) in bus_arcs) == 0))
+              sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l] - dcub[l]) for (l,f,t) in bus_arcs) == 0))
     end
     
     # constraints corresponding to primal variable pg
