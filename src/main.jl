@@ -7,14 +7,10 @@ PMs = PowerModels
 include("parse.jl")
 include("utils.jl")
 include("full_model.jl")
+include("bound_tightening.jl")
+include("master.jl")
 include("subproblem.jl")
 
-PMs = PowerModels
- 
-include("parse.jl")
-include("utils.jl")
-include("subproblem.jl")
- 
 # setting up configuration for the run
 config = parse_commandline()
 config["casefile"] = string(config["path"], config["file"])
@@ -34,21 +30,31 @@ config["scenariofile"] = string(config["path"], "scenario_data/case", length(key
 scenarios = fetch_scenarios(config)
 @assert size(scenarios)[1] == config["batchsize"]
 
-if (config["algo"] == "full")
-    mp = post_dc_primal(data, scenarios, Model(solver=CplexSolver())) 
-    solve(mp)
-    println(">> obj primal first scenario: $(getobjectivevalue(mp))\n\n")
-    md = post_dc_dual(data, scenarios, Model(solver=CplexSolver())) 
-    solve(md)
-    println(">> obj dual first scenario: $(getobjectivevalue(md))\n\n")
-    #kkt = post_dc_kkt(data, scenarios, Model(solver=CplexSolver())) 
-    #solve(kkt)
-    #println(">> obj kkt single scenario: $(getobjectivevalue(kkt))\n\n")
-    m = create_full_model(scenarios, ref, config, model=Model(solver=CplexSolver()))
+if config["algo"] == "full"
+    if config["batchsize"] == 1
+        mp = post_dc_primal(data, scenarios, Model(solver=CplexSolver())) 
+        solve(mp)
+        println(">> obj primal one scenario: $(getobjectivevalue(mp))")
+    end
+
+    m = create_full_model(scenarios, ref, config, Model(solver=CplexSolver()))
     solve(m)
-    println(">> obj full model: $(getobjectivevalue(m))\n\n")
+    println(">> obj full model: $(getobjectivevalue(m))")
     println(">> $(getvalue(getindex(m, :x)))")
-    println(">> $(getvalue(getindex(m, :y)))")
+    println(">> $(getvalue(getindex(m, :y)))")    
+end
+
+if config["algo"] == "Lshaped" || config["algo"] == "Lshapedreg"
     
+    # perform bound tightening 
+    bt_model = create_bound_tightening_model(scenarios, ref, config, Model(solver=CplexSolver()))
+    tighten_bounds(scenarios, ref, config, bt_model)
+    println(scenarios)
+    println(config["bounds"][:primal_dclb][1])
+    println(config["bounds"][:primal_dcub][1])
+
+    # create the relaxed master problem for the first iteration 
+    master = create_master_model(scenarios, ref, config, Model(solver=CplexSolver()))   
     
+
 end

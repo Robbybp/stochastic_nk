@@ -1,8 +1,7 @@
 
-function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, model=Model())
+function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, model=Model())
 
     ref = ref[:nw][0]
-    println(scenarios)
     numscenarios = config["batchsize"]
     config["budget"] == sum(scenarios[1,:])
     M = 1000
@@ -70,7 +69,7 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
         @constraint(model, [s=1:numscenarios], p[(l,i,j),s] <= ref[:branch][l]["rate_a"] * (1-x[l]*scenarios[s,col_index]))
     end
 
-    # dc power flow
+    # (d) dc power flow
     for k in 1:length(keys(ref[:branch]))
         i = collect(keys(ref[:branch]))[k]
         branch = ref[:branch][i]
@@ -90,7 +89,7 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
         end
     end
 
-    # load shedding limit
+    # (e) load shedding limit
     for (i, bus) in ref[:bus]
         @constraint(model, [s=1:numscenarios], ld[i,s] <= 1)
     end
@@ -102,17 +101,17 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
         @constraint(model, [s=1:numscenarios], sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l,s] - dcub[l,s]) for (l,f,t) in bus_arcs) == 0)
     end
 
-    # constraints corresponding to primal variable pg
+    # (b) constraints corresponding to primal variable pg
     for (i, gen) in ref[:gen]
          @constraint(model, [s=1:numscenarios], -kcl[gen["gen_bus"],s] + pgmin[i,s] - pgmax[i,s] == 0)
     end
 
-    # constraints corresponding to primal variable p
+    # (c) constraints corresponding to primal variable p
     for (l,i,j) in ref[:arcs_from]
         @constraint(model, [s=1:numscenarios], kcl[i,s] - kcl[j,s] + tmin[l,s] - tmax[l,s] + dclb[l,s] - dcub[l,s] == 0)
     end
 
-    # constraints corresponding to primal variable ld
+    # (d) constraints corresponding to primal variable ld
     for (i, bus) in ref[:bus]
         @constraint(model, [s=1:numscenarios], -bus["pd"]*kcl[i,s] - loadshed[i,s] <= bus["pd"])
     end
@@ -182,19 +181,27 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
                 )
 
     @expression(model, dc_expr[s=1:numscenarios], 
-                sum( -M * scenarios[s,length(keys(ref[:gen]))+k] * xdclb[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) +
-                sum( -M * scenarios[s,length(keys(ref[:gen]))+k] * xdcub[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) )
+                sum( - M * scenarios[s,length(keys(ref[:gen]))+k] * xdclb[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) +
+                sum( - M * scenarios[s,length(keys(ref[:gen]))+k] * xdcub[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) )
                )
-    
-    @expression(model, dualobj_expr[s=1:numscenarios], kcl_expr[s] + pgmin_expr[s] + pgmax_expr[s] + tmin_expr[s] + tmax_expr[s] + dc_expr[s] + loadshed_expr[s])
+
     
     # primal objective == dual objective
-    @constraint(model, [s=1:numscenarios], primalobj_expr[s] == dualobj_expr[s])
-    
-    model.ext[:primalobj_expr] = primalobj_expr
-    model.ext[:dualobj_expr] = dualobj_expr
+    @constraint(model, [s=1:numscenarios], primalobj_expr[s] == kcl_expr[s] + pgmin_expr[s] + pgmax_expr[s] + tmin_expr[s] + tmax_expr[s] + dc_expr[s] + loadshed_expr[s])
 
-    @objective(model, Max, sum(primalobj_expr)/numscenarios)
+    # add references to tightened variable bounds to the configuration dictionary
+    config["bounds"] = Dict{Symbol,Any}()
+    config["bounds"][:primal_dclb] = Dict{Any,Any}()
+    config["bounds"][:primal_dcub] = Dict{Any,Any}()
+
+    config["bounds"][:dual_pgmin] = Dict{Any,Any}()
+    config["bounds"][:dual_pgmax] = Dict{Any,Any}()
+
+    config["bounds"][:dual_tmin] = Dict{Any,Any}()
+    config["bounds"][:dual_tmax] = Dict{Any,Any}()
+    config["bounds"][:dual_dclb] = Dict{Any,Any}()
+    config["bounds"][:dual_dcub] = Dict{Any,Any}()
+    
     return model
 
 end
@@ -207,4 +214,53 @@ function add_reformulation(model, xy, x_bin, y_cont, y_ub)
 
     return
 
+end
+
+function tighten_bounds(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, model=Model())
+
+    ref = ref[:nw][0]
+    numscenarios = config["batchsize"]
+    config["budget"] == sum(scenarios[1,:])
+    
+    # tighten M values in dc power flow constraints
+    for s in 1:numscenarios
+        config["bounds"][:primal_dclb][s] = Dict{Any,Float64}()
+        config["bounds"][:primal_dcub][s] = Dict{Any,Float64}()
+
+        for k in 1:length(keys(ref[:branch]))
+            i = collect(keys(ref[:branch]))[k]
+            branch = ref[:branch][i]
+            col_index = length(keys(ref[:gen])) + k
+
+            f_idx = (i, branch["f_bus"], branch["t_bus"])
+            g, b = PMs.calc_branch_y(branch)
+            p = getindex(model, :p)
+            va = getindex(model, :va)
+            p_fr = p[f_idx,s]
+            va_fr = va[branch["f_bus"],s]
+            va_to = va[branch["t_bus"],s]
+
+            @objective(model, Min, p_fr + b*(va_fr - va_to))
+            solve(model, relaxation=true)
+            println(model)
+            config["bounds"][:primal_dclb][s][i] = getobjectivevalue(model)
+
+            @objective(model, Max, p_fr + b*(va_fr - va_to))
+            solve(model, relaxation=true)
+            println(model)
+            config["bounds"][:primal_dcub][s][i] = getobjectivevalue(model)
+            
+            
+        end
+
+    end
+
+
+    # tighten upper bound for pgmin and pgmax variables
+
+    # tighten upper bound for tmin and tmax variables
+
+    # tighten upper bound for dclb and dcub variables
+
+    return
 end
