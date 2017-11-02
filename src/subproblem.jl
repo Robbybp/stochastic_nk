@@ -56,7 +56,7 @@ function post_dc_primal(data::Dict{String,Any}, scenarios, model=Model())
     end
 
     for (i, gen) in ref[:gen]
-        push!(pgmin_cons, @constraint(model, pg[i] >= gen["pmin"]))
+        push!(pgmin_cons, @constraint(model, pg[i] >= 0))
         push!(pgmax_cons, @constraint(model, pg[i] <= gen["pmax"]))
     end
 
@@ -157,7 +157,7 @@ function post_dc_dual(data::Dict{String,Any}, scenarios, model=Model())
 
     @objective(model, Max, 
                sum( -ref[:bus][i]["pd"] * kcl[i] for i in keys(ref[:bus]) ) +
-               sum( ref[:gen][i]["pmin"] * pgmin[i] - ref[:gen][i]["pmax"] * pgmax[i] for i in keys(ref[:gen]) ) +
+               sum( - ref[:gen][i]["pmax"] * pgmax[i] for i in keys(ref[:gen]) ) +
                sum( -ref[:branch][l]["rate_a"] * tmin[l] - ref[:branch][l]["rate_a"] * tmax[l] for l in keys(ref[:branch]) ) +
                sum( 0 + 0 for i in keys(ref[:branch]) ) + 
                sum( -loadshed[i] for i in keys(ref[:bus]) )
@@ -250,7 +250,7 @@ function post_dc_kkt(data::Dict{String,Any}, scenarios, model=Model())
 
     # (b) generation limits
     for (i, gen) in ref[:gen]
-        push!(pgmin_cons, @constraint(model, pg[i] >= gen["pmin"]))
+        push!(pgmin_cons, @constraint(model, pg[i] >= 0))
         push!(pgmax_cons, @constraint(model, pg[i] <= gen["pmax"]))
     end
 
@@ -308,7 +308,7 @@ function post_dc_kkt(data::Dict{String,Any}, scenarios, model=Model())
     @expression(model, primalobj_expr, sum( ref[:bus][i]["pd"] * ld[i] for i in keys(ref[:bus]) ) )
     @expression(model, dualobj_expr, 
                                 sum( -ref[:bus][i]["pd"] * kcl[i] for i in keys(ref[:bus]) ) +
-                                sum( ref[:gen][i]["pmin"] * pgmin[i] - ref[:gen][i]["pmax"] * pgmax[i] for i in keys(ref[:gen]) ) +
+                                sum( - ref[:gen][i]["pmax"] * pgmax[i] for i in keys(ref[:gen]) ) +
                                 sum( -ref[:branch][l]["rate_a"] * tmin[l] - ref[:branch][l]["rate_a"] * tmax[l] for l in keys(ref[:branch]) ) +
                                 sum( 0 + 0 for i in keys(ref[:branch]) ) + 
                                 sum( -loadshed[i] for i in keys(ref[:bus]) )

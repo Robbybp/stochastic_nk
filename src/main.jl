@@ -35,6 +35,7 @@ if config["algo"] == "full"
         mp = post_dc_primal(data, scenarios, Model(solver=CplexSolver())) 
         solve(mp)
         println(">> obj primal one scenario: $(getobjectivevalue(mp))")
+        println(">> $(getvalue(getindex(mp, :va)))")
     end
 
     m = create_full_model(scenarios, ref, config, Model(solver=CplexSolver()))
@@ -42,6 +43,18 @@ if config["algo"] == "full"
     println(">> obj full model: $(getobjectivevalue(m))")
     println(">> $(getvalue(getindex(m, :x)))")
     println(">> $(getvalue(getindex(m, :y)))")    
+        println(">> $(getvalue(getindex(m, :va)))")
+
+    println(m)
+
+    println("--------------------------------- primal ")
+    println(mp)
+
+    md = post_dc_dual(data, scenarios, Model())
+    println("--------------------------------- dual ")
+    println(md)
+    
+
 end
 
 if config["algo"] == "Lshaped" || config["algo"] == "Lshapedreg"

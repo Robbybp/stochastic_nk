@@ -117,7 +117,6 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
     end
 
     # reformulation variables
-    @variable(model, ypgmin[i in keys(ref[:gen]), s=1:numscenarios] >= 0)
     @variable(model, ypgmax[i in keys(ref[:gen]), s=1:numscenarios] >= 0)
     @variable(model, xtmin[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
     @variable(model, xtmax[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
@@ -127,7 +126,6 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
     # reformulation constraints
     for (i, gen) in ref[:gen]
         for s in 1:numscenarios
-            add_reformulation(model, ypgmin[i,s], y[i], pgmin[i,s], M)
             add_reformulation(model, ypgmax[i,s], y[i], pgmax[i,s], M)
         end
     end
@@ -147,7 +145,6 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
     
     # dual objective
     kcl_expr = Any[]
-    pgmin_expr = Any[]
     pgmax_expr = Any[]
     tmin_expr = Any[]
     tmax_expr = Any[]
@@ -157,11 +154,6 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
     @expression(model, kcl_expr[s=1:numscenarios], sum( -ref[:bus][i]["pd"] * kcl[i,s] for i in keys(ref[:bus]) ) )
     
     @expression(model, loadshed_expr[s=1:numscenarios], sum( -loadshed[i,s] for i in keys(ref[:bus]) ) )
-
-    @expression(model, pgmin_expr[s=1:numscenarios], 
-                sum( ref[:gen][i]["pmin"] * pgmin[i,s] for i in keys(ref[:gen]) ) -
-                sum( scenarios[s,i] * ref[:gen][collect(keys(ref[:gen]))[i]]["pmin"] * ypgmin[collect(keys(ref[:gen]))[i],s] for i in 1:length(keys(ref[:gen])) )
-                )
 
     @expression(model, pgmax_expr[s=1:numscenarios], 
                 sum( -ref[:gen][i]["pmax"] * pgmax[i,s] for i in keys(ref[:gen]) ) +
@@ -187,14 +179,13 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
 
     
     # primal objective == dual objective
-    @constraint(model, [s=1:numscenarios], primalobj_expr[s] == kcl_expr[s] + pgmin_expr[s] + pgmax_expr[s] + tmin_expr[s] + tmax_expr[s] + dc_expr[s] + loadshed_expr[s])
+    @constraint(model, [s=1:numscenarios], primalobj_expr[s] == kcl_expr[s] + pgmax_expr[s] + tmin_expr[s] + tmax_expr[s] + dc_expr[s] + loadshed_expr[s])
 
     # add references to tightened variable bounds to the configuration dictionary
     config["bounds"] = Dict{Symbol,Any}()
     config["bounds"][:primal_dclb] = Dict{Any,Any}()
     config["bounds"][:primal_dcub] = Dict{Any,Any}()
 
-    config["bounds"][:dual_pgmin] = Dict{Any,Any}()
     config["bounds"][:dual_pgmax] = Dict{Any,Any}()
 
     config["bounds"][:dual_tmin] = Dict{Any,Any}()
@@ -256,7 +247,7 @@ function tighten_bounds(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,An
     end
 
 
-    # tighten upper bound for pgmin and pgmax variables
+    # tighten upper bound for pgmax variables
 
     # tighten upper bound for tmin and tmax variables
 
