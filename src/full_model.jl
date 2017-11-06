@@ -25,6 +25,8 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
     @variable(model, tmax[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
     @variable(model, dclb[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
     @variable(model, dcub[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
+    @variable(model, vamin[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
+    @variable(model, vamax[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
     @variable(model, loadshed[i in keys(ref[:bus]), s in 1:numscenarios] >= 0)
 
     # auxiliary definitions for formulating the constraints
@@ -70,7 +72,7 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
         @constraint(model, [s=1:numscenarios], p[(l,i,j),s] <= ref[:branch][l]["rate_a"] * (1-x[l]*scenarios[s,col_index]))
     end
 
-    # dc power flow
+    # (d) dc power flow
     for k in 1:length(keys(ref[:branch]))
         i = collect(keys(ref[:branch]))[k]
         branch = ref[:branch][i]
@@ -92,7 +94,24 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
         end
     end
 
-    # load shedding limit
+    for k in 1:length(keys(ref[:branch]))
+        i = collect(keys(ref[:branch]))[k]
+        branch = ref[:branch][i]
+        col_index = length(keys(ref[:gen])) + k
+
+        t_min = ref[:off_angmin]
+        t_max = ref[:off_angmax]
+
+        for s in 1:numscenarios
+            va_fr = va[branch["f_bus"],s]
+            va_to = va[branch["t_bus"],s]
+
+            @constraint(model, va_fr - va_to >= branch["angmin"] * (1-x[i]) + t_min * x[i])
+            @constraint(model, va_fr - va_to <= branch["angmax"] * (1-x[i]) + t_max * x[i])
+        end
+    end
+
+    # (f) load shedding limit
     for (i, bus) in ref[:bus]
         @constraint(model, [s=1:numscenarios], ld[i,s] <= 1)
     end
@@ -101,7 +120,7 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
     # (a) constraints corresponding to primal variable va
     for (i, bus) in ref[:bus]
         bus_arcs = ref[:bus_arcs][i]
-        @constraint(model, [s=1:numscenarios], sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l,s] - dcub[l,s]) for (l,f,t) in bus_arcs) == 0)
+        @constraint(model, [s=1:numscenarios], sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l,s] - dcub[l,s]) + p_mag[(l,f,t)] * (vamin[l,s] - vamax[l,s]) for (l,f,t) in bus_arcs) == 0)
     end
 
     # (b) constraints corresponding to primal variable pg
@@ -125,6 +144,8 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
     @variable(model, xtmax[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
     @variable(model, xdclb[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
     @variable(model, xdcub[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
+    @variable(model, xvamin[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
+    @variable(model, xvamax[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
 
     # reformulation constraints
     for (i, gen) in ref[:gen]
@@ -139,6 +160,8 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
             add_reformulation(model, xtmax[l,s], x[l], tmax[l,s], M)
             add_reformulation(model, xdclb[l,s], x[l], dclb[l,s], M)
             add_reformulation(model, xdcub[l,s], x[l], dcub[l,s], M)
+            add_reformulation(model, xvamin[l,s], x[l], vamin[l,s], M)
+            add_reformulation(model, xvamax[l,s], x[l], vamax[l,s], M)
         end
     end
     
@@ -152,6 +175,7 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
     tmin_expr = Any[]
     tmax_expr = Any[]
     dc_expr = Any[]
+    va_expr = Any[]
     loadshed_expr = Any[]
 
     @expression(model, kcl_expr[s=1:numscenarios], sum( -ref[:bus][i]["pd"] * kcl[i,s] for i in keys(ref[:bus]) ) )
@@ -182,8 +206,15 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
                 sum( - PMs.calc_branch_y(ref[:branch][collect(keys(ref[:branch]))[k]])[2] * t_min * scenarios[s,length(keys(ref[:gen]))+k] * xdclb[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) +
                 sum( PMs.calc_branch_y(ref[:branch][collect(keys(ref[:branch]))[k]])[2] * t_max * scenarios[s,length(keys(ref[:gen]))+k] * xdcub[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) )
                )
+
+    @expression(model, va_expr[s=1:numscenarios], 
+                 sum( ref[:branch][collect(keys(ref[:branch]))[k]]["angmin"] * vamin[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) +
+                 sum( (-ref[:branch][collect(keys(ref[:branch]))[k]]["angmin"] + t_min) * scenarios[s,length(keys(ref[:gen]))+k] * xvamin[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) -
+                 sum( ref[:branch][collect(keys(ref[:branch]))[k]]["angmax"] * vamax[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) -
+                 sum( (-ref[:branch][collect(keys(ref[:branch]))[k]]["angmax"] + t_max) * scenarios[s,length(keys(ref[:gen]))+k] * xvamax[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) )
+                )
     
-    @expression(model, dualobj_expr[s=1:numscenarios], kcl_expr[s] + pgmax_expr[s] + tmin_expr[s] + tmax_expr[s] + dc_expr[s] + loadshed_expr[s])
+    @expression(model, dualobj_expr[s=1:numscenarios], kcl_expr[s] + pgmax_expr[s] + tmin_expr[s] + tmax_expr[s] + dc_expr[s] + va_expr[s] + loadshed_expr[s])
     
     # primal objective == dual objective
     @constraint(model, [s=1:numscenarios], primalobj_expr[s] == dualobj_expr[s])

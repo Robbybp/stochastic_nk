@@ -27,7 +27,7 @@ function post_dc_primal(data::Dict{String,Any}, scenarios, model=Model())
     end
 
     ref = PMs.build_ref(data)
-    
+
     ref = ref[:nw][0]
 
     @variable(model, va[i in keys(ref[:bus])])
@@ -151,7 +151,7 @@ function post_dc_dual(data::Dict{String,Any}, scenarios, model=Model())
         bus_arcs = ref[:bus_arcs][i] 
         push!(va_cons, 
               @constraint(model, 
-                          sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l] - dcub[l]) + (vamin[l] - vamax[l]) for (l,f,t) in bus_arcs) == 0))
+                          sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l] - dcub[l]) + p_mag[(l,f,t)] * (vamin[l] - vamax[l]) for (l,f,t) in bus_arcs) == 0))
     end
 
     for (i, gen) in ref[:gen]
@@ -312,7 +312,7 @@ function post_dc_kkt(data::Dict{String,Any}, scenarios, model=Model())
         bus_arcs = ref[:bus_arcs][i] 
         push!(va_cons, 
               @constraint(model, 
-                          sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l] - dcub[l]) + (vamin[l] - vamax[l]) for (l,f,t) in bus_arcs) == 0))
+                          sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l] - dcub[l]) + p_mag[(l,f,t)] * (vamin[l] - vamax[l]) for (l,f,t) in bus_arcs) == 0))
     end
     
     # (b) constraints corresponding to primal variable pg

@@ -36,18 +36,16 @@ if config["algo"] == "full"
         solve(mp)
         println(">> obj primal one scenario: $(getobjectivevalue(mp))")
 
+        data = PMs.parse_file(config["casefile"])
         md = post_dc_dual(data, scenarios, Model(solver=CplexSolver())) 
         solve(md)
         println(">> obj dual one scenario: $(getobjectivevalue(mp))")
-
+    
+        data = PMs.parse_file(config["casefile"])
         mkkt = post_dc_kkt(data, scenarios, Model(solver=CplexSolver())) 
         solve(mkkt)
         println(">> obj kkt one scenario: $(getvalue(mkkt.ext[:primalobj_expr]))")
-
-        println(mp)
-        println(md)
-        println(mkkt)
-        quit()
+        
     end
 
     m = create_full_model(scenarios, ref, config, Model(solver=CplexSolver()))
@@ -55,18 +53,7 @@ if config["algo"] == "full"
     println(">> obj full model: $(getobjectivevalue(m))")
     println(">> $(getvalue(getindex(m, :x)))")
     println(">> $(getvalue(getindex(m, :y)))")    
-        println(">> $(getvalue(getindex(m, :va)))")
-
-    println(m)
-
-    println("--------------------------------- primal ")
-    println(mp)
-
-    md = post_dc_dual(data, scenarios, Model())
-    println("--------------------------------- dual ")
-    println(md)
     
-
 end
 
 if config["algo"] == "Lshaped" || config["algo"] == "Lshapedreg"
