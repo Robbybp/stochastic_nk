@@ -35,7 +35,19 @@ if config["algo"] == "full"
         mp = post_dc_primal(data, scenarios, Model(solver=CplexSolver())) 
         solve(mp)
         println(">> obj primal one scenario: $(getobjectivevalue(mp))")
-        println(">> $(getvalue(getindex(mp, :va)))")
+
+        md = post_dc_dual(data, scenarios, Model(solver=CplexSolver())) 
+        solve(md)
+        println(">> obj dual one scenario: $(getobjectivevalue(mp))")
+
+        mkkt = post_dc_kkt(data, scenarios, Model(solver=CplexSolver())) 
+        solve(mkkt)
+        println(">> obj kkt one scenario: $(getvalue(mkkt.ext[:primalobj_expr]))")
+
+        println(mp)
+        println(md)
+        println(mkkt)
+        quit()
     end
 
     m = create_full_model(scenarios, ref, config, Model(solver=CplexSolver()))
