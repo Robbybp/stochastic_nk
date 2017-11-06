@@ -53,6 +53,11 @@ function parse_commandline()
         help = "budget for interdiction "
         arg_type = Int
         default = 2
+
+        "--solver", "-z"
+        help = "solver to use CPLEX/Gurobi"
+        arg_type = String
+        default = "cplex"
     end
 
     return parse_args(s)

@@ -2,10 +2,33 @@
 function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, model=Model())
 
     ref = ref[:nw][0]
-    println(scenarios)
     numscenarios = config["batchsize"]
-    config["budget"] == sum(scenarios[1,:])
     M = 1000
+
+    # add references to tightened variable bounds to the configuration dictionary
+    if !haskey(config, "bounds")
+        config["bounds"] = Dict{Symbol,Any}()
+
+        config["bounds"][:dual_pgmax] = Dict{Any,Any}()
+
+        config["bounds"][:dual_tmin] = Dict{Any,Any}()
+        config["bounds"][:dual_tmax] = Dict{Any,Any}()
+        config["bounds"][:dual_dclb] = Dict{Any,Any}()
+        config["bounds"][:dual_dcub] = Dict{Any,Any}()
+        config["bounds"][:dual_vamin] = Dict{Any,Any}()
+        config["bounds"][:dual_vamax] = Dict{Any,Any}()
+
+        for s in 1:numscenarios
+            config["bounds"][:dual_pgmax][s] = Dict{Any,Float64}( i => M for i in keys(ref[:gen]) )
+
+            config["bounds"][:dual_tmin][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_tmax][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_dclb][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_dcub][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_vamin][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_vamax][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+        end
+    end
 
     # interdiction variables
     @variable(model, x[i in keys(ref[:branch])], Bin)
@@ -150,18 +173,18 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
     # reformulation constraints
     for (i, gen) in ref[:gen]
         for s in 1:numscenarios
-            add_reformulation(model, ypgmax[i,s], y[i], pgmax[i,s], M)
+            add_reformulation(model, ypgmax[i,s], y[i], pgmax[i,s], config["bounds"][:dual_pgmax][s][i])
         end
     end
 
     for (l, branch) in ref[:branch]
         for s in 1:numscenarios
-            add_reformulation(model, xtmin[l,s], x[l], tmin[l,s], M)
-            add_reformulation(model, xtmax[l,s], x[l], tmax[l,s], M)
-            add_reformulation(model, xdclb[l,s], x[l], dclb[l,s], M)
-            add_reformulation(model, xdcub[l,s], x[l], dcub[l,s], M)
-            add_reformulation(model, xvamin[l,s], x[l], vamin[l,s], M)
-            add_reformulation(model, xvamax[l,s], x[l], vamax[l,s], M)
+            add_reformulation(model, xtmin[l,s], x[l], tmin[l,s], config["bounds"][:dual_tmin][s][l])
+            add_reformulation(model, xtmax[l,s], x[l], tmax[l,s], config["bounds"][:dual_tmax][s][l])
+            add_reformulation(model, xdclb[l,s], x[l], dclb[l,s], config["bounds"][:dual_dclb][s][l])
+            add_reformulation(model, xdcub[l,s], x[l], dcub[l,s], config["bounds"][:dual_dcub][s][l])
+            add_reformulation(model, xvamin[l,s], x[l], vamin[l,s], config["bounds"][:dual_vamin][s][l])
+            add_reformulation(model, xvamax[l,s], x[l], vamax[l,s], config["bounds"][:dual_vamax][s][l])
         end
     end
     
@@ -222,7 +245,7 @@ function create_full_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String
     model.ext[:primalobj_expr] = primalobj_expr
     model.ext[:dualobj_expr] = dualobj_expr
 
-    @objective(model, Max, sum(dualobj_expr)/numscenarios)
+    @objective(model, Max, sum(primalobj_expr)/numscenarios)
     return model
 
 end

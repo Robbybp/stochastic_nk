@@ -1,10 +1,34 @@
 
-function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, model=Model())
+function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, model=Model(); relaxation_obj=relaxation_obj)
 
     ref = ref[:nw][0]
     numscenarios = config["batchsize"]
-    config["budget"] == sum(scenarios[1,:])
     M = 1000
+
+    # add references to tightened variable bounds to the configuration dictionary
+    if !haskey(config, "bounds")
+        config["bounds"] = Dict{Symbol,Any}()
+
+        config["bounds"][:dual_pgmax] = Dict{Any,Any}()
+
+        config["bounds"][:dual_tmin] = Dict{Any,Any}()
+        config["bounds"][:dual_tmax] = Dict{Any,Any}()
+        config["bounds"][:dual_dclb] = Dict{Any,Any}()
+        config["bounds"][:dual_dcub] = Dict{Any,Any}()
+        config["bounds"][:dual_vamin] = Dict{Any,Any}()
+        config["bounds"][:dual_vamax] = Dict{Any,Any}()
+
+        for s in 1:numscenarios
+            config["bounds"][:dual_pgmax][s] = Dict{Any,Float64}( i => M for i in keys(ref[:gen]) )
+
+            config["bounds"][:dual_tmin][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_tmax][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_dclb][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_dcub][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_vamin][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_vamax][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+        end
+    end
 
     # interdiction variables
     @variable(model, x[i in keys(ref[:branch])], Bin)
@@ -24,6 +48,8 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
     @variable(model, tmax[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
     @variable(model, dclb[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
     @variable(model, dcub[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
+    @variable(model, vamin[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
+    @variable(model, vamax[i in keys(ref[:branch]), s in 1:numscenarios] >= 0)
     @variable(model, loadshed[i in keys(ref[:bus]), s in 1:numscenarios] >= 0)
 
     # auxiliary definitions for formulating the constraints
@@ -78,18 +104,38 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
         f_idx = (i, branch["f_bus"], branch["t_bus"])
 
         g, b = PMs.calc_branch_y(branch)
+        t_min = ref[:off_angmin]
+        t_max = ref[:off_angmax]
 
         for s in 1:numscenarios
             p_fr = p[f_idx,s]
             va_fr = va[branch["f_bus"],s]
             va_to = va[branch["t_bus"],s]
 
-            @constraint(model, p_fr + b*(va_fr - va_to) >= -M*x[i]*scenarios[s,col_index])
-            @constraint(model, p_fr + b*(va_fr - va_to) <= M*x[i]*scenarios[s,col_index])
+            @constraint(model, p_fr + b*(va_fr - va_to) >= -b * t_min * x[i] * scenarios[s,col_index])
+            @constraint(model, p_fr + b*(va_fr - va_to) <= -b * t_max * x[i] * scenarios[s,col_index])
+        end
+    end
+    
+    # (e) θ bounds 
+    for k in 1:length(keys(ref[:branch]))
+        i = collect(keys(ref[:branch]))[k]
+        branch = ref[:branch][i]
+        col_index = length(keys(ref[:gen])) + k
+
+        t_min = ref[:off_angmin]
+        t_max = ref[:off_angmax]
+
+        for s in 1:numscenarios
+            va_fr = va[branch["f_bus"],s]
+            va_to = va[branch["t_bus"],s]
+
+            @constraint(model, va_fr - va_to >= branch["angmin"] * (1-x[i]) + t_min * x[i])
+            @constraint(model, va_fr - va_to <= branch["angmax"] * (1-x[i]) + t_max * x[i])
         end
     end
 
-    # (e) load shedding limit
+    # (f) load shedding limit
     for (i, bus) in ref[:bus]
         @constraint(model, [s=1:numscenarios], ld[i,s] <= 1)
     end
@@ -98,7 +144,7 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
     # (a) constraints corresponding to primal variable va
     for (i, bus) in ref[:bus]
         bus_arcs = ref[:bus_arcs][i]
-        @constraint(model, [s=1:numscenarios], sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l,s] - dcub[l,s]) for (l,f,t) in bus_arcs) == 0)
+        @constraint(model, [s=1:numscenarios], sum(PMs.calc_branch_y(ref[:branch][l])[2] * p_mag[(l,f,t)] * (dclb[l,s] - dcub[l,s]) + p_mag[(l,f,t)] * (vamin[l,s] - vamax[l,s]) for (l,f,t) in bus_arcs) == 0)
     end
 
     # (b) constraints corresponding to primal variable pg
@@ -122,20 +168,24 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
     @variable(model, xtmax[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
     @variable(model, xdclb[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
     @variable(model, xdcub[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
+    @variable(model, xvamin[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
+    @variable(model, xvamax[i in keys(ref[:branch]), s=1:numscenarios] >= 0)
 
     # reformulation constraints
     for (i, gen) in ref[:gen]
         for s in 1:numscenarios
-            add_reformulation(model, ypgmax[i,s], y[i], pgmax[i,s], M)
+            add_reformulation(model, ypgmax[i,s], y[i], pgmax[i,s], config["bounds"][:dual_pgmax][s][i])
         end
     end
 
     for (l, branch) in ref[:branch]
         for s in 1:numscenarios
-            add_reformulation(model, xtmin[l,s], x[l], tmin[l,s], M)
-            add_reformulation(model, xtmax[l,s], x[l], tmax[l,s], M)
-            add_reformulation(model, xdclb[l,s], x[l], dclb[l,s], M)
-            add_reformulation(model, xdcub[l,s], x[l], dcub[l,s], M)
+            add_reformulation(model, xtmin[l,s], x[l], tmin[l,s], config["bounds"][:dual_tmin][s][l])
+            add_reformulation(model, xtmax[l,s], x[l], tmax[l,s], config["bounds"][:dual_tmax][s][l])
+            add_reformulation(model, xdclb[l,s], x[l], dclb[l,s], config["bounds"][:dual_dclb][s][l])
+            add_reformulation(model, xdcub[l,s], x[l], dcub[l,s], config["bounds"][:dual_dcub][s][l])
+            add_reformulation(model, xvamin[l,s], x[l], vamin[l,s], config["bounds"][:dual_vamin][s][l])
+            add_reformulation(model, xvamax[l,s], x[l], vamax[l,s], config["bounds"][:dual_vamax][s][l])
         end
     end
     
@@ -149,6 +199,7 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
     tmin_expr = Any[]
     tmax_expr = Any[]
     dc_expr = Any[]
+    va_expr = Any[]
     loadshed_expr = Any[]
 
     @expression(model, kcl_expr[s=1:numscenarios], sum( -ref[:bus][i]["pd"] * kcl[i,s] for i in keys(ref[:bus]) ) )
@@ -172,26 +223,27 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
                     for k in 1:length(ref[:arcs_from]) )
                 )
 
+    t_min = ref[:off_angmin]
+    t_max = ref[:off_angmax]
+
     @expression(model, dc_expr[s=1:numscenarios], 
-                sum( - M * scenarios[s,length(keys(ref[:gen]))+k] * xdclb[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) +
-                sum( - M * scenarios[s,length(keys(ref[:gen]))+k] * xdcub[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) )
+                sum( - PMs.calc_branch_y(ref[:branch][collect(keys(ref[:branch]))[k]])[2] * t_min * scenarios[s,length(keys(ref[:gen]))+k] * xdclb[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) +
+                sum( PMs.calc_branch_y(ref[:branch][collect(keys(ref[:branch]))[k]])[2] * t_max * scenarios[s,length(keys(ref[:gen]))+k] * xdcub[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) )
                )
 
+    @expression(model, va_expr[s=1:numscenarios], 
+                 sum( ref[:branch][collect(keys(ref[:branch]))[k]]["angmin"] * vamin[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) +
+                 sum( (-ref[:branch][collect(keys(ref[:branch]))[k]]["angmin"] + t_min) * scenarios[s,length(keys(ref[:gen]))+k] * xvamin[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) -
+                 sum( ref[:branch][collect(keys(ref[:branch]))[k]]["angmax"] * vamax[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) ) -
+                 sum( (-ref[:branch][collect(keys(ref[:branch]))[k]]["angmax"] + t_max) * scenarios[s,length(keys(ref[:gen]))+k] * xvamax[collect(keys(ref[:branch]))[k],s] for k in 1:length(ref[:branch]) )
+                )
     
     # primal objective == dual objective
-    @constraint(model, [s=1:numscenarios], primalobj_expr[s] == kcl_expr[s] + pgmax_expr[s] + tmin_expr[s] + tmax_expr[s] + dc_expr[s] + loadshed_expr[s])
+    @constraint(model, [s=1:numscenarios], primalobj_expr[s] == kcl_expr[s] + pgmax_expr[s] + tmin_expr[s] + tmax_expr[s] + dc_expr[s] + va_expr[s] + loadshed_expr[s])
 
-    # add references to tightened variable bounds to the configuration dictionary
-    config["bounds"] = Dict{Symbol,Any}()
-    config["bounds"][:primal_dclb] = Dict{Any,Any}()
-    config["bounds"][:primal_dcub] = Dict{Any,Any}()
+    # bound constraint
+    @constraint(model, sum(primalobj_expr)/numscenarios >= relaxation_obj - 1e-5)
 
-    config["bounds"][:dual_pgmax] = Dict{Any,Any}()
-
-    config["bounds"][:dual_tmin] = Dict{Any,Any}()
-    config["bounds"][:dual_tmax] = Dict{Any,Any}()
-    config["bounds"][:dual_dclb] = Dict{Any,Any}()
-    config["bounds"][:dual_dcub] = Dict{Any,Any}()
     
     return model
 
@@ -211,47 +263,58 @@ function tighten_bounds(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,An
 
     ref = ref[:nw][0]
     numscenarios = config["batchsize"]
-    config["budget"] == sum(scenarios[1,:])
     
-    # tighten M values in dc power flow constraints
+    pgmax = getindex(model, :pgmax)
+    tmin = getindex(model, :tmin)
+    tmax = getindex(model, :tmax)
+    dclb = getindex(model, :dclb)
+    dcub = getindex(model, :dcub)
+    vamin = getindex(model, :vamin)
+    vamax = getindex(model, :vamax)
+
     for s in 1:numscenarios
-        config["bounds"][:primal_dclb][s] = Dict{Any,Float64}()
-        config["bounds"][:primal_dcub][s] = Dict{Any,Float64}()
 
-        for k in 1:length(keys(ref[:branch]))
-            i = collect(keys(ref[:branch]))[k]
-            branch = ref[:branch][i]
-            col_index = length(keys(ref[:gen])) + k
-
-            f_idx = (i, branch["f_bus"], branch["t_bus"])
-            g, b = PMs.calc_branch_y(branch)
-            p = getindex(model, :p)
-            va = getindex(model, :va)
-            p_fr = p[f_idx,s]
-            va_fr = va[branch["f_bus"],s]
-            va_to = va[branch["t_bus"],s]
-
-            @objective(model, Min, p_fr + b*(va_fr - va_to))
+        # tighten upper bound for pgmax variables
+        for i in keys(ref[:gen])
+            @objective(model, Max, pgmax[i,s])
             solve(model, relaxation=true)
-            println(model)
-            config["bounds"][:primal_dclb][s][i] = getobjectivevalue(model)
+            config["bounds"][:dual_pgmax][s][i] = getobjectivevalue(model)
+        end
 
-            @objective(model, Max, p_fr + b*(va_fr - va_to))
+        # tighten upper bound for tmin and tmax variables
+        for l in keys(ref[:branch])
+            @objective(model, Max, tmin[l,s])
             solve(model, relaxation=true)
-            println(model)
-            config["bounds"][:primal_dcub][s][i] = getobjectivevalue(model)
-            
-            
+            config["bounds"][:dual_tmin][s][l] = getobjectivevalue(model)
+
+            @objective(model, Max, tmax[l,s])
+            solve(model, relaxation=true)
+            config["bounds"][:dual_tmax][s][l] = getobjectivevalue(model)
+        end
+
+        # tighten upper bound for dclb and dcub variables
+        for l in keys(ref[:branch])
+            @objective(model, Max, dclb[l,s])
+            solve(model, relaxation=true)
+            config["bounds"][:dual_dclb][s][l] = getobjectivevalue(model)
+
+            @objective(model, Max, dcub[l,s])
+            solve(model, relaxation=true)
+            config["bounds"][:dual_dcub][s][l] = getobjectivevalue(model)
+        end
+
+        # tighten upper bound for vamin and vamax variables
+        for l in keys(ref[:branch])
+            @objective(model, Max, vamin[l,s])
+            solve(model, relaxation=true)
+            config["bounds"][:dual_vamin][s][l] = getobjectivevalue(model)
+
+            @objective(model, Max, vamax[l,s])
+            solve(model, relaxation=true)
+            config["bounds"][:dual_vamax][s][l] = getobjectivevalue(model)
         end
 
     end
-
-
-    # tighten upper bound for pgmax variables
-
-    # tighten upper bound for tmin and tmax variables
-
-    # tighten upper bound for dclb and dcub variables
 
     return
 end
