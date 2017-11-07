@@ -12,6 +12,7 @@ include("full_model.jl")
 include("bound_tightening.jl")
 include("master.jl")
 include("subproblem.jl")
+include("pdkkt.jl")
 
 # setting up configuration for the run
 config = parse_commandline()
@@ -49,6 +50,8 @@ if config["algo"] == "full"
         mkkt = post_dc_kkt(data, scenarios, Model(solver=solver_to_use)) 
         solve(mkkt)
         println(">> obj kkt one scenario: $(getvalue(mkkt.ext[:primalobj_expr]))")
+
+        println(JuMP.prepConstrMatrix(mkkt))
         
     end
 
@@ -69,6 +72,7 @@ if config["algo"] == "Lshaped" || config["algo"] == "Lshapedreg"
     relaxation_obj = getobjectivevalue(full_model)
     println(">> relaxation solved, objective value: $relaxation_obj")
     
+    #=
     # perform bound tightening 
     println(">> tightening bounds")
     bt_model = create_bound_tightening_model(scenarios, ref, config, Model(solver=solver_to_use), relaxation_obj=relaxation_obj)
@@ -82,11 +86,19 @@ if config["algo"] == "Lshaped" || config["algo"] == "Lshapedreg"
     println(">> resolved objective value: $(getobjectivevalue(full_model))")
     @assert isapprox(relaxation_obj, getobjectivevalue(full_model), atol=1e-6)
     println(">> check for correctness of bound-tightening cleared")
-
+    =#
 
     # create the relaxed master problem for the first iteration 
     println(">> creating master problem")
     master = create_master_model(scenarios, ref, config, Model(solver=solver_to_use))   
     
+    # set first iteration master objective 
+    iteration_count = 1
+    θ = getindex(master, :θ)
+    @objective(master, Max, sum(θ))
+    solve(master)
+    println(">> iteration $iteration_count upper bound: $(getobjectivevalue(master))")
+    println(">> $(getvalue(getindex(master, :x)))")
+    println(">> $(getvalue(getindex(master, :y)))")    
 
 end
