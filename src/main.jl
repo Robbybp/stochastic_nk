@@ -2,6 +2,7 @@ using JuMP
 using PowerModels
 using CPLEX
 using Gurobi
+using MathProgBase
  
 PMs = PowerModels
 
@@ -18,8 +19,8 @@ include("benders.jl")
 config = parse_commandline()
 config["casefile"] = string(config["path"], config["file"])
 config["numscenarios"] = config["batchsize"] * config["numbatches"]
-solver_to_use = CplexSolver()
-(config["solver"] == "gurobi") && (solver_to_use = GurobiSolver(OutputFlag=0))
+solver_to_use = CplexSolver(CPX_PARAM_THREADS=1)
+(config["solver"] == "gurobi") && (solver_to_use = GurobiSolver(OutputFlag=0,Threads=1))
 
 for (arg, val) in config
     println(">> $arg => $val") 
@@ -34,6 +35,14 @@ config["scenariofile"] = string(config["path"], "scenario_data/case", length(key
 (!isfile(config["scenariofile"])) && (println(">> scenario file does not exist, quitting program ..."); quit())
 scenarios = fetch_scenarios(config)
 @assert size(scenarios)[1] == config["batchsize"]
+
+if config["parallel"] == "y"
+    addprocs(config["workers"])
+    @everywhere using MathProgBase
+    @everywhere using CPLEX
+    @everywhere using Gurobi
+    @everywhere using Clp
+end
 
 if config["algo"] == "full"
     if config["batchsize"] == 1
@@ -90,6 +99,14 @@ if config["algo"] != "full"
         println(">> check for correctness of bound-tightening cleared")
     end
     
+    # compute master problem auxilliary variable upper bounds
+    println(">> computing tight bounds for master problem auxiliary variables")
+    config["theta_ub"] = Dict{Int,Float64}()
+    for s in 1:config["batchsize"]
+        m = post_dc_primal(data, scenarios[s,:], Model(solver=CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0)))
+        solve(m)
+        config["theta_ub"][s] = getobjectivevalue(m)
+    end
 
     # create the relaxed master problem for the first iteration 
     println(">> creating master problem")
@@ -103,7 +120,7 @@ if config["algo"] != "full"
     
     if config["algo"] == "Lshapedlazy"
         println(">> Lshaped with lazy constraint calllback started")
-        @time status, obj, sol = Lshaped_lazy(scenarios, ref, config, A, sense, l, u, master, GurobiSolver(OutputFlag=0))
+        @time status, obj, sol = Lshaped_lazy(scenarios, ref, config, A, sense, l, u, master, CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0))
         println(">> algorithm ended")
 
         println(">> obj = $obj")
@@ -113,7 +130,7 @@ if config["algo"] != "full"
 
     if config["algo"] == "Lshaped"
         println(">> Lshaped traditional started")
-        @time status, obj, sol = Lshaped(scenarios, ref, config, A, sense, l, u, master, GurobiSolver(OutputFlag=0))
+        @time status, obj, sol = Lshaped(scenarios, ref, config, A, sense, l, u, master, CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0))
         println(">> algorithm ended")
 
         println(">> obj = $obj")

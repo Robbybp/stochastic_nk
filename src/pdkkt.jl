@@ -20,7 +20,7 @@ function post_dc_primal(data::Dict{String,Any}, scenarios, model=Model())
 
     for i in 1:length(br_keys)
         branch_id = br_keys[i]
-        if scenarios[i+length(br_keys)] == 1
+        if scenarios[i+length(gen_keys)] == 1
             # delete!(data["branch"], string(branch_id))
             data["branch"][string(branch_id)]["br_status"] = 0
         end
@@ -117,7 +117,7 @@ function post_dc_dual(data::Dict{String,Any}, scenarios, model=Model())
 
     for i in 1:length(br_keys)
         branch_id = br_keys[i]
-        if scenarios[i+length(br_keys)] == 1
+        if scenarios[i+length(gen_keys)] == 1
             # delete!(data["branch"], string(branch_id))
             data["branch"][string(branch_id)]["br_status"] = 0
         end
@@ -198,7 +198,7 @@ function post_dc_kkt(data::Dict{String,Any}, scenarios, model=Model())
 
     for i in 1:length(br_keys)
         branch_id = br_keys[i]
-        if scenarios[i+length(br_keys)] == 1
+        if scenarios[i+length(gen_keys)] == 1
             # delete!(data["branch"], string(branch_id))
             data["branch"][string(branch_id)]["br_status"] = 0
         end

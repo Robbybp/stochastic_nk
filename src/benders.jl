@@ -1,4 +1,3 @@
-@everywhere using MathProgBase
 
 function Lshaped_lazy(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, sense, l, u, master, solver)
     
@@ -25,11 +24,23 @@ function Lshaped_lazy(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}
         @assert length(c) == numscenarios
 
         subproblem_sol = Dict{Int,Any}()
-
-        for s in 1:numscenarios
-            subproblem_sol[s] = linprog(c[s], A, sense, b[s], l, u, solver)
-            @assert subproblem_sol[s].status == :Optimal
+        
+        if config["parallel"] == "n"
+            for s in 1:numscenarios
+                subproblem_sol[s] = linprog(c[s], A, sense, b[s], l, u, solver)
+                @assert subproblem_sol[s].status == :Optimal
+            end
+        else
+            subproblem_sol = pmap((a1,a2,a3,a4,a5,a6,a7)->linprog(a1,a2,a3,a4,a5,a6,a7), 
+                                  [c[s] for s in 1:numscenarios], 
+                                  [A for s in 1:numscenarios], 
+                                  [sense for s in 1:numscenarios], 
+                                  [b[s] for s in 1:numscenarios], 
+                                  [l for s in 1:numscenarios], 
+                                  [u for s in 1:numscenarios], 
+                                  [solver for s in 1:numscenarios])
         end
+
         
         # conversion of max problem to - min (-z) to use linprog
         subproblem_obj = [-subproblem_sol[s].objval for s in 1:numscenarios]
@@ -81,9 +92,20 @@ function Lshaped(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, 
 
         subproblem_sol = Dict{Int,Any}()
 
-        for s in 1:numscenarios
-            subproblem_sol[s] = linprog(c[s], A, sense, b[s], l, u, solver)
-            @assert subproblem_sol[s].status == :Optimal
+        if config["parallel"] == "n"
+            for s in 1:numscenarios
+                subproblem_sol[s] = linprog(c[s], A, sense, b[s], l, u, solver)
+                @assert subproblem_sol[s].status == :Optimal
+            end
+        else
+            subproblem_sol = pmap((a1,a2,a3,a4,a5,a6,a7)->linprog(a1,a2,a3,a4,a5,a6,a7), 
+                                  [c[s] for s in 1:numscenarios], 
+                                  [A for s in 1:numscenarios], 
+                                  [sense for s in 1:numscenarios], 
+                                  [b[s] for s in 1:numscenarios], 
+                                  [l for s in 1:numscenarios], 
+                                  [u for s in 1:numscenarios], 
+                                  [solver for s in 1:numscenarios])
         end
         
         # conversion of max problem to - min (-z) to use linprog

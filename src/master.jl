@@ -9,7 +9,7 @@ function create_master_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{Stri
     @variable(model, y[i in keys(ref[:gen])], Bin)
 
     # lifted variables for multi-cut Lshaped
-    @variable(model, θ[1:numscenarios] <= 1e4)
+    @variable(model, θ[s=1:numscenarios] <= config["theta_ub"][s])
 
     # master constraints
     @constraint(model, sum(x) + sum(y) == config["budget"])
