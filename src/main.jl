@@ -55,14 +55,15 @@ if config["algo"] == "full"
 
     data = PMs.parse_file(config["casefile"])
     m = create_full_model(scenarios, ref, config, Model(solver=solver_to_use))
-    solve(m)
+    @time solve(m)
     println(">> obj full model: $(getobjectivevalue(m))")
     println(">> $(getvalue(getindex(m, :x)))")
     println(">> $(getvalue(getindex(m, :y)))")    
     
 end
 
-if config["algo"] == "Lshaped" || config["algo"] == "Lshapedreg"
+if config["algo"] != "full"
+    #=
     println(">> creating and solving full LP relaxation")
     # solve relaxation of the full model (to be used for bound-tightening)
     full_model = create_full_model(scenarios, ref, config, Model(solver=solver_to_use))
@@ -71,7 +72,7 @@ if config["algo"] == "Lshaped" || config["algo"] == "Lshapedreg"
     xval = getvalue(getindex(full_model, :x))
     yval = getvalue(getindex(full_model, :y))
     println(">> relaxation solved, objective value: $relaxation_obj")
-    
+    =#
     
     if config["bt"] == "y"
         # perform bound tightening 
@@ -92,17 +93,35 @@ if config["algo"] == "Lshaped" || config["algo"] == "Lshapedreg"
 
     # create the relaxed master problem for the first iteration 
     println(">> creating master problem")
-    master = create_master_model(scenarios, ref, config, Model(solver=solver_to_use))  
+    master = create_master_model(scenarios, ref, config, Model(solver=solver_to_use))
     
     # create subproblem nonchanging matrices
     A, sense, l, u = create_matrices(scenarios, ref, config, Model())
 
     # create rhs variable expression vector for master cuts
     master.ext = create_expression_vectors(scenarios, ref, config, master_model=master)
+    
+    if config["algo"] == "Lshapedlazy"
+        println(">> Lshaped with lazy constraint calllback started")
+        @time status, obj, sol = Lshaped_lazy(scenarios, ref, config, A, sense, l, u, master, GurobiSolver(OutputFlag=0))
+        println(">> algorithm ended")
 
-    println(">> Lshaped started")
-    status, obj, sol = Lshaped_pmap(scenarios, ref, config, A, sense, l, u, master, solver_to_use, xval, yval)
-    println(">> Lshaped ended")
+        println(">> obj = $obj")
+        println(">> $(sol[:x])")
+        println(">> $(sol[:y])")
+    end 
 
-    println(">> obj = $obj")
+    if config["algo"] == "Lshaped"
+        println(">> Lshaped traditional started")
+        @time status, obj, sol = Lshaped(scenarios, ref, config, A, sense, l, u, master, GurobiSolver(OutputFlag=0))
+        println(">> algorithm ended")
+
+        println(">> obj = $obj")
+        println(">> $(sol[:x])")
+        println(">> $(sol[:y])")
+    end 
+
+    if config["algo"] == "Lshapedreg"
+
+    end 
 end

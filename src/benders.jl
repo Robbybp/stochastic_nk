@@ -1,69 +1,109 @@
 @everywhere using MathProgBase
 
-function Lshaped_pmap(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, sense, l, u, master, solver, xval, yval)
+function Lshaped_lazy(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, sense, l, u, master, solver)
     
     numscenarios = config["batchsize"]
-    iteration_count = 1
-    lb = -1e7
-    ub = 1e7
     
-    while abs(ub-lb)/abs(lb) > 1e-5
-        
-        θ = getindex(master, :θ)
-        x = getindex(master, :x)
-        y = getindex(master, :y)
-        numsubproblem_constr = length(sense)
-        
+    θ = getindex(master, :θ)
+    x = getindex(master, :x)
+    y = getindex(master, :y)
+    numsubproblem_constr = length(sense)
+
+    @objective(master, Max, sum(θ))
+    
+
+    function bendercuts(cb)
+        xval = getvalue(x)
+        yval = getvalue(y)
+        θval = getvalue(θ)
+
+        master_obj = sum(θval)
+
         b, c = create_vectors(scenarios, ref, config, Model(), xval, yval, numsubproblem_constr)
 
         @assert length(b) == numscenarios
         @assert length(c) == numscenarios
-        
+
         subproblem_sol = Dict{Int,Any}()
-        
+
         for s in 1:numscenarios
             subproblem_sol[s] = linprog(c[s], A, sense, b[s], l, u, solver)
             @assert subproblem_sol[s].status == :Optimal
         end
-
+        
+        # conversion of max problem to - min (-z) to use linprog
         subproblem_obj = [-subproblem_sol[s].objval for s in 1:numscenarios]
-        if iteration_count > 1
-            lb = max(sum(subproblem_obj)/numscenarios, lb)
-        end
+
+        if !isapprox(sum(subproblem_obj), master_obj, atol=1e-6)
+            for s in 1:numscenarios
+                @lazyconstraint(cb, θ[s] <= -dot(master.ext[:proj_expr][s], subproblem_sol[s].attrs[:lambda]))
+            end
+        end 
+
+    end 
         
-        @constraint(master, [s=1:numscenarios], θ[s] <= subproblem_obj[s] - dot(master.ext[:proj_expr][s], subproblem_sol[s].attrs[:lambda]))
-        
-        x_index = []
-        y_index = []
-        
-        x_val = i -> getvalue(x[i])
-        y_val = i -> getvalue(y[i])
+    addlazycallback(master, bendercuts)
+    status = solve(master)
+    
+    obj = getobjectivevalue(master)/numscenarios
 
-        current_xvals = Dict( i => x_val(i) for i in keys(ref[:nw][0][:branch]) )
-        x_index = collect(keys(filter( (i, val) -> val > 0.9, current_xvals)))
+    sol = Dict{Symbol,Any}()
+    sol[:x] = getvalue(x)
+    sol[:y] = getvalue(y)
 
-        current_yvals = Dict( i => y_val(i) for i in keys(ref[:nw][0][:gen]) )
-        y_index = collect(keys(filter( (i, val) -> val > 0.9, current_xvals)))
+    return status, obj, sol
+end
 
-        @constraint(master, sum(x[i] for i in x_index) + sum(y[i] for i in y_index) <= config["budget"] - 1)
+function Lshaped(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, sense, l, u, master, solver)
+    
+    numscenarios = config["batchsize"]
+    
+    θ = getindex(master, :θ)
+    x = getindex(master, :x)
+    y = getindex(master, :y)
+    numsubproblem_constr = length(sense)
 
-        @objective(master, Max, sum(θ)/numscenarios)
+    @objective(master, Max, sum(θ))
+    
+    lb = -1e5
+    iteration = 1
+    solve(master)
+    ub = getobjectivevalue(master)
 
-        solve(master)
-        ub = getobjectivevalue(master)
-
-        println(">> iteration $iteration_count upperbound: $ub lowerbound: $lb")
-
+    while abs(ub-lb) > 1e-5*lb 
         xval = getvalue(x)
         yval = getvalue(y)
 
-        iteration_count += 1
-        
-    end
+        b, c = create_vectors(scenarios, ref, config, Model(), xval, yval, numsubproblem_constr)
 
-    obj = lowerbound
-    sol[:x] = getvalue(getindex(master, :x))
-    sol[:y] = getvalue(getindex(master, :y))
+        @assert length(b) == numscenarios
+        @assert length(c) == numscenarios
+
+        subproblem_sol = Dict{Int,Any}()
+
+        for s in 1:numscenarios
+            subproblem_sol[s] = linprog(c[s], A, sense, b[s], l, u, solver)
+            @assert subproblem_sol[s].status == :Optimal
+        end
+        
+        # conversion of max problem to - min (-z) to use linprog
+        subproblem_obj = [-subproblem_sol[s].objval for s in 1:numscenarios]
+        lb = max(lb, sum(subproblem_obj))
+        
+        @constraint(master, [s=1:numscenarios], θ[s] <= -dot(master.ext[:proj_expr][s], subproblem_sol[s].attrs[:lambda]))
+        solve(master)
+        ub = getobjectivevalue(master)
+        iteration += 1
+
+        println(">> iteration: $iteration lb: $lb ub: $ub relgap: $(abs(ub-lb)/lb*100)")
+    end 
+
+           
+    obj = getobjectivevalue(master)/numscenarios
+
+    sol = Dict{Symbol,Any}()
+    sol[:x] = getvalue(x)
+    sol[:y] = getvalue(y)
 
     return :Optimal, obj, sol
 end

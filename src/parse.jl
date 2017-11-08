@@ -15,9 +15,9 @@ function parse_commandline()
         default = "../data/"
 
         "--algo", "-a"
-        help = "algorithm to run (full/Lshaped/Lshapedreg)"
+        help = "algorithm to run (full/Lshaped/Lshapedlazy/Lshapedreg)"
         arg_type = String
-        default = "Lshaped"
+        default = "Lshapedlazy"
 
         "--timeout", "-t"
         help = "time limit for the run in seconds"

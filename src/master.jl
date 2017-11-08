@@ -9,7 +9,7 @@ function create_master_model(scenarios, ref::Dict{Symbol,Any}, config::Dict{Stri
     @variable(model, y[i in keys(ref[:gen])], Bin)
 
     # lifted variables for multi-cut Lshaped
-    @variable(model, θ[1:numscenarios] <= 1e5)
+    @variable(model, θ[1:numscenarios] <= 1e4)
 
     # master constraints
     @constraint(model, sum(x) + sum(y) == config["budget"])
@@ -23,6 +23,33 @@ function create_expression_vectors(scenarios, ref::Dict{Symbol,Any}, config::Dic
     
     ref = ref[:nw][0]
     numscenarios = config["batchsize"]
+    M = 1000
+
+    # add references to tightened variable bounds to the configuration dictionary
+    if !haskey(config, "bounds")
+        config["bounds"] = Dict{Symbol,Any}()
+
+        config["bounds"][:dual_pgmax] = Dict{Any,Any}()
+
+        config["bounds"][:dual_tmin] = Dict{Any,Any}()
+        config["bounds"][:dual_tmax] = Dict{Any,Any}()
+        config["bounds"][:dual_dclb] = Dict{Any,Any}()
+        config["bounds"][:dual_dcub] = Dict{Any,Any}()
+        config["bounds"][:dual_vamin] = Dict{Any,Any}()
+        config["bounds"][:dual_vamax] = Dict{Any,Any}()
+
+        for s in 1:numscenarios
+            config["bounds"][:dual_pgmax][s] = Dict{Any,Float64}( i => M for i in keys(ref[:gen]) )
+
+            config["bounds"][:dual_tmin][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_tmax][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_dclb][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_dcub][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_vamin][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+            config["bounds"][:dual_vamax][s] = Dict{Any,Float64}( i => M for i in keys(ref[:branch]) )
+        end
+    end
+
     ext = Dict{Symbol,Any}()
     ext[:proj_expr] = Dict{Int,Any}()
     
