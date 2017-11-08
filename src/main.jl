@@ -2,7 +2,6 @@ using JuMP
 using PowerModels
 using CPLEX
 using Gurobi
-
  
 PMs = PowerModels
 
@@ -13,6 +12,7 @@ include("bound_tightening.jl")
 include("master.jl")
 include("subproblem.jl")
 include("pdkkt.jl")
+include("benders.jl")
 
 # setting up configuration for the run
 config = parse_commandline()
@@ -50,8 +50,6 @@ if config["algo"] == "full"
         mkkt = post_dc_kkt(data, scenarios, Model(solver=solver_to_use)) 
         solve(mkkt)
         println(">> obj kkt one scenario: $(getvalue(mkkt.ext[:primalobj_expr]))")
-
-        println(JuMP.prepConstrMatrix(mkkt))
         
     end
 
@@ -70,35 +68,41 @@ if config["algo"] == "Lshaped" || config["algo"] == "Lshapedreg"
     full_model = create_full_model(scenarios, ref, config, Model(solver=solver_to_use))
     solve(full_model, relaxation=true)
     relaxation_obj = getobjectivevalue(full_model)
+    xval = getvalue(getindex(full_model, :x))
+    yval = getvalue(getindex(full_model, :y))
     println(">> relaxation solved, objective value: $relaxation_obj")
     
-    #=
-    # perform bound tightening 
-    println(">> tightening bounds")
-    bt_model = create_bound_tightening_model(scenarios, ref, config, Model(solver=solver_to_use), relaxation_obj=relaxation_obj)
-    tighten_bounds(scenarios, ref, config, bt_model)
-    println(">> bounds tightened")
     
-    # resolve relaxation with tightened bounds as a check
-    println(">> resolving relaxation with tightened bounds")
-    full_model = create_full_model(scenarios, ref, config, Model(solver=solver_to_use))
-    solve(full_model, relaxation=true)
-    println(">> resolved objective value: $(getobjectivevalue(full_model))")
-    @assert isapprox(relaxation_obj, getobjectivevalue(full_model), atol=1e-6)
-    println(">> check for correctness of bound-tightening cleared")
-    =#
+    if config["bt"] == "y"
+        # perform bound tightening 
+        println(">> tightening bounds")
+        bt_model = create_bound_tightening_model(scenarios, ref, config, Model(solver=solver_to_use), relaxation_obj=relaxation_obj)
+        tighten_bounds(scenarios, ref, config, bt_model)
+        println(">> bounds tightened")
+    
+        # resolve relaxation with tightened bounds as a check
+        println(">> resolving relaxation with tightened bounds")
+        full_model = create_full_model(scenarios, ref, config, Model(solver=solver_to_use))
+        solve(full_model, relaxation=true)
+        println(">> resolved objective value: $(getobjectivevalue(full_model))")
+        @assert isapprox(relaxation_obj, getobjectivevalue(full_model), atol=1e-6)
+        println(">> check for correctness of bound-tightening cleared")
+    end
+    
 
     # create the relaxed master problem for the first iteration 
     println(">> creating master problem")
-    master = create_master_model(scenarios, ref, config, Model(solver=solver_to_use))   
+    master = create_master_model(scenarios, ref, config, Model(solver=solver_to_use))  
     
-    # set first iteration master objective 
-    iteration_count = 1
-    θ = getindex(master, :θ)
-    @objective(master, Max, sum(θ))
-    solve(master)
-    println(">> iteration $iteration_count upper bound: $(getobjectivevalue(master))")
-    println(">> $(getvalue(getindex(master, :x)))")
-    println(">> $(getvalue(getindex(master, :y)))")    
+    # create subproblem nonchanging matrices
+    A, sense, l, u = create_matrices(scenarios, ref, config, Model())
 
+    # create rhs variable expression vector for master cuts
+    master.ext = create_expression_vectors(scenarios, ref, config, master_model=master)
+
+    println(">> Lshaped started")
+    status, obj, sol = Lshaped_pmap(scenarios, ref, config, A, sense, l, u, master, solver_to_use, xval, yval)
+    println(">> Lshaped ended")
+
+    println(">> obj = $obj")
 end

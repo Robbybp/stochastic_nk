@@ -58,6 +58,11 @@ function parse_commandline()
         help = "solver to use CPLEX/Gurobi"
         arg_type = String
         default = "cplex"
+
+        "--bt", "-y"
+        help = "perform bound-tightening y/n"
+        arg_type = String
+        default = "n"
     end
 
     return parse_args(s)

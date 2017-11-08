@@ -278,40 +278,40 @@ function tighten_bounds(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,An
         for i in keys(ref[:gen])
             @objective(model, Max, pgmax[i,s])
             solve(model, relaxation=true)
-            config["bounds"][:dual_pgmax][s][i] = getobjectivevalue(model)
+            config["bounds"][:dual_pgmax][s][i] = (abs(getobjectivevalue(model) < 1e-4)) ? 0 : getobjectivevalue(model)
         end
 
         # tighten upper bound for tmin and tmax variables
         for l in keys(ref[:branch])
             @objective(model, Max, tmin[l,s])
             solve(model, relaxation=true)
-            config["bounds"][:dual_tmin][s][l] = getobjectivevalue(model)
+            config["bounds"][:dual_tmin][s][l] = (abs(getobjectivevalue(model) < 1e-4)) ? 0 : getobjectivevalue(model)
 
             @objective(model, Max, tmax[l,s])
             solve(model, relaxation=true)
-            config["bounds"][:dual_tmax][s][l] = getobjectivevalue(model)
+            config["bounds"][:dual_tmax][s][l] = (abs(getobjectivevalue(model) < 1e-4)) ? 0 : getobjectivevalue(model)
         end
 
         # tighten upper bound for dclb and dcub variables
         for l in keys(ref[:branch])
             @objective(model, Max, dclb[l,s])
             solve(model, relaxation=true)
-            config["bounds"][:dual_dclb][s][l] = getobjectivevalue(model)
+            config["bounds"][:dual_dclb][s][l] = (abs(getobjectivevalue(model) < 1e-4)) ? 0 : getobjectivevalue(model)
 
             @objective(model, Max, dcub[l,s])
             solve(model, relaxation=true)
-            config["bounds"][:dual_dcub][s][l] = getobjectivevalue(model)
+            config["bounds"][:dual_dcub][s][l] = (abs(getobjectivevalue(model) < 1e-4)) ? 0 : getobjectivevalue(model)
         end
 
         # tighten upper bound for vamin and vamax variables
         for l in keys(ref[:branch])
             @objective(model, Max, vamin[l,s])
             solve(model, relaxation=true)
-            config["bounds"][:dual_vamin][s][l] = getobjectivevalue(model)
+            config["bounds"][:dual_vamin][s][l] = (abs(getobjectivevalue(model) < 1e-4)) ? 0 : getobjectivevalue(model)
 
             @objective(model, Max, vamax[l,s])
             solve(model, relaxation=true)
-            config["bounds"][:dual_vamax][s][l] = getobjectivevalue(model)
+            config["bounds"][:dual_vamax][s][l] = (abs(getobjectivevalue(model) < 1e-4)) ? 0 : getobjectivevalue(model)
         end
 
     end
