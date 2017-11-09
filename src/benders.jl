@@ -47,14 +47,14 @@ function Lshaped(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, 
 
         if !isapprox(sum(subproblem_obj), master_obj, atol=1e-6)
             for s in 1:numscenarios
-                @lazyconstraint(cb, θ[s] <= -dot(master.ext[:proj_expr][s], subproblem_sol[s].attrs[:lambda]))
+                @lazyconstraint(cb, θ[s] <= -sum( [master.ext[:proj_expr][s][i]*subproblem_sol[s].attrs[:lambda][i] for i in 1:numsubproblem_constr] ) )
             end
         end 
 
     end 
         
     addlazycallback(master, bendercuts)
-    status = solve(master)
+    status = solve(master, suppress_warnings=true)
     
     obj = getobjectivevalue(master)/numscenarios
 

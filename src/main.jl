@@ -112,12 +112,19 @@ if config["algo"] != "full"
     config["time"] = toq()
     println(">> algorithm ended")
 
-    println(">> obj = $obj")
+    @printf ">> obj = %.4f MW \n" obj*ref[:nw][0][:baseMVA]
     println(">> branch_indexes = $(sol[:x])")
     println(">> gen_indexes = $(sol[:y])")
     
-    config["obj"] = obj
+    config["obj"] = obj*ref[:nw][0][:baseMVA]
     config["sol"] = sol
+    total_load = 0
+    for (i, bus) in ref[:nw][0][:bus]
+        total_load += bus["pd"]
+    end
+    total_load *= ref[:nw][0][:baseMVA]
+    
+    config["percent_load_shed"] = config["obj"]/total_load*100
 
     write_solution(config, ref)
 
