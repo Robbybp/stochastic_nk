@@ -1,13 +1,14 @@
 
 function fetch_scenarios(config, numbuses)
     scenariofile = config["scenariofile"]
+    zipfile = config["zipfile"]
     numscenarios = config["numscenarios"]
     numbatches = config["numbatches"]
     batchsize = config["batchsize"]
     batchid = config["batchid"]
-    zipfile = string(config["path"] + "scenario_data/case" + numbuses + ".tar.gz")
+    scenario_dir = string(config["path"], "scenario_data/")
     
-    (!isfile(scenariofile)) && (run(`tar -zxvf $zipfile`))
+    (!isfile(scenariofile)) && (run(`tar -zxvf $zipfile -C $scenario_dir`))
     scenarios = readdlm(scenariofile)
     (isfile(zipfile)) && (run(`rm -f $scenariofile`))
 
