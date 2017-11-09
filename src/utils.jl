@@ -15,3 +15,25 @@ function fetch_scenarios(config)
     
     return scenarios[from:to, :]
 end
+
+function write_solution(config, ref)
+    println(">> writing solution to file")
+    delete!(config, "bounds")
+    delete!(config, "theta_ub")
+    filename = string("../output_from_runs/case", length(ref[:nw][0][:bus]), "_s", config["batchsize"], "_id", config["batchid"], "_k", config["budget"], ".txt")
+    println(">> output filename: $filename")
+
+    open(filename, "w") do f
+        for (i, val) in config
+            if i == "sol"
+                write(f, "branch = $(sol[:x])\n")
+                write(f, "gen = $(sol[:y])\n")
+            else
+                write(f, "$i = $val\n")
+            end
+        end
+    end
+
+    return
+end
+

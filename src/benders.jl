@@ -1,5 +1,5 @@
 
-function Lshaped_lazy(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, sense, l, u, master, solver)
+function Lshaped(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, sense, l, u, master, solver)
     
     numscenarios = config["batchsize"]
     
@@ -59,13 +59,25 @@ function Lshaped_lazy(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}
     obj = getobjectivevalue(master)/numscenarios
 
     sol = Dict{Symbol,Any}()
-    sol[:x] = getvalue(x)
-    sol[:y] = getvalue(y)
+    sol[:x] = Int[]
+    sol[:y] = Int[]
+    
+    for i in keys(ref[:nw][0][:branch])
+        if getvalue(x[i]) > 0.9
+            push!(sol[:x], i)
+        end
+    end
+
+    for i in keys(ref[:nw][0][:gen])
+        if getvalue(y[i]) > 0.9
+            push!(sol[:y], i)
+        end
+    end
 
     return status, obj, sol
 end
 
-function Lshaped(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, sense, l, u, master, solver)
+function Lshaped_traditional(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, sense, l, u, master, solver)
     
     numscenarios = config["batchsize"]
     
@@ -124,8 +136,20 @@ function Lshaped(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, 
     obj = getobjectivevalue(master)/numscenarios
 
     sol = Dict{Symbol,Any}()
-    sol[:x] = getvalue(x)
-    sol[:y] = getvalue(y)
+    sol[:x] = Int[]
+    sol[:y] = Int[]
+    
+    for i in keys(ref[:nw][0][:branch])
+        if getvalue(x[i]) > 0.9
+            push!(sol[:x], i)
+        end
+    end
+
+    for i in keys(ref[:nw][0][:gen])
+        if getvalue(y[i]) > 0.9
+            push!(sol[:y], i)
+        end
+    end
 
     return :Optimal, obj, sol
 end

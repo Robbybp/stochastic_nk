@@ -40,8 +40,6 @@ if config["parallel"] == "y"
     addprocs(config["workers"])
     @everywhere using MathProgBase
     @everywhere using CPLEX
-    @everywhere using Gurobi
-    @everywhere using Clp
 end
 
 if config["algo"] == "full"
@@ -72,16 +70,6 @@ if config["algo"] == "full"
 end
 
 if config["algo"] != "full"
-    #=
-    println(">> creating and solving full LP relaxation")
-    # solve relaxation of the full model (to be used for bound-tightening)
-    full_model = create_full_model(scenarios, ref, config, Model(solver=solver_to_use))
-    solve(full_model, relaxation=true)
-    relaxation_obj = getobjectivevalue(full_model)
-    xval = getvalue(getindex(full_model, :x))
-    yval = getvalue(getindex(full_model, :y))
-    println(">> relaxation solved, objective value: $relaxation_obj")
-    =#
     
     if config["bt"] == "y"
         # perform bound tightening 
@@ -118,27 +106,19 @@ if config["algo"] != "full"
     # create rhs variable expression vector for master cuts
     master.ext = create_expression_vectors(scenarios, ref, config, master_model=master)
     
-    if config["algo"] == "Lshapedlazy"
-        println(">> Lshaped with lazy constraint calllback started")
-        @time status, obj, sol = Lshaped_lazy(scenarios, ref, config, A, sense, l, u, master, CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0))
-        println(">> algorithm ended")
+    println(">> Lshaped")
+    tic()
+    @time status, obj, sol = Lshaped(scenarios, ref, config, A, sense, l, u, master, CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0))
+    config["time"] = toq()
+    println(">> algorithm ended")
 
-        println(">> obj = $obj")
-        println(">> $(sol[:x])")
-        println(">> $(sol[:y])")
-    end 
+    println(">> obj = $obj")
+    println(">> branch_indexes = $(sol[:x])")
+    println(">> gen_indexes = $(sol[:y])")
+    
+    config["obj"] = obj
+    config["sol"] = sol
 
-    if config["algo"] == "Lshaped"
-        println(">> Lshaped traditional started")
-        @time status, obj, sol = Lshaped(scenarios, ref, config, A, sense, l, u, master, CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0))
-        println(">> algorithm ended")
+    write_solution(config, ref)
 
-        println(">> obj = $obj")
-        println(">> $(sol[:x])")
-        println(">> $(sol[:y])")
-    end 
-
-    if config["algo"] == "Lshapedreg"
-
-    end 
 end

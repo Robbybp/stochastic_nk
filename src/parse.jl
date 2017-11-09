@@ -15,7 +15,7 @@ function parse_commandline()
         default = "../data/"
 
         "--algo", "-a"
-        help = "algorithm to run (full/Lshaped/Lshapedlazy/Lshapedreg)"
+        help = "algorithm to run (full/Lshaped)"
         arg_type = String
         default = "Lshapedlazy"
 
@@ -42,7 +42,7 @@ function parse_commandline()
         "--numbatches", "-n"
         help = "total number of batches in the SAA approximation"
         arg_type = Int
-        default = 1
+        default = 10
 
         "--interdict", "-i"
         help = "interdict lines or (lines and generators) (l/lg)"
