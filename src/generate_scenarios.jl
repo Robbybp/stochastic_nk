@@ -22,7 +22,7 @@ function parse_commandline()
         "--numscenarios", "-n"
         help = "number of scenarios to be generated"
         arg_type = Int
-        default = 20000
+        default = 50000
         
         "--ofile", "-o"
         help = "output file name"
@@ -47,6 +47,9 @@ config["outputfile"] = string(config["opath"], config["ofile"])
 (isfile(config["outputfile"])) && (println(">> scenario file exists ... exiting program"); quit())
 
 data = PMs.parse_file(config["inputfile"])
+zipfilename = string(config["opath"], "case", length(data["bus"]), ".tar.gz")
+(isfile(zipfilename)) && (println(">> scenario zipped file exists ... exiting program"); quit())
+
 ref = PMs.build_ref(data)[:nw][0]
 numcolumns = length(keys(ref[:gen])) + length(keys(ref[:branch]))
 scenarios = zeros(config["numscenarios"], numcolumns)
@@ -70,3 +73,5 @@ end
 scenarios = round.(Int, scenarios)
 
 writedlm(config["outputfile"], scenarios, " ")
+run(`tar -zcvf $zipfilename $(config["outputfile"])`)
+run(`rm -f $(config["outputfile"])`)

@@ -1,12 +1,16 @@
 
-function fetch_scenarios(config)
+function fetch_scenarios(config, numbuses)
     scenariofile = config["scenariofile"]
     numscenarios = config["numscenarios"]
     numbatches = config["numbatches"]
     batchsize = config["batchsize"]
     batchid = config["batchid"]
-
+    zipfile = string(config["path"] + "scenario_data/case" + numbuses + ".tar.gz")
+    
+    (!isfile(scenariofile)) && (run(`tar -zxvf $zipfile`))
     scenarios = readdlm(scenariofile)
+    (isfile(zipfile)) && (run(`rm -f $scenariofile`))
+
     (size(scenarios)[1] < numscenarios) && (println(">> not enough scenarios available for the run, quitting program ...."); quit())
     (batchid > numbatches) && (println(">> number of batches and batch id inconsistent, quitting program ...."); quit())
 

@@ -29,11 +29,11 @@ end
 data = PMs.parse_file(config["casefile"])
 ref = PMs.build_ref(data)
 
-config["scenariofile"] = string(config["path"], "scenario_data/case", length(keys(ref[:nw][0][:bus])), "_scenarios_unique.txt")
+config["scenariofile"] = string(config["path"], "scenario_data/case", length(keys(ref[:nw][0][:bus])), "_scenarios.txt")
 
 # fetch the scenarios for the run
 (!isfile(config["scenariofile"])) && (println(">> scenario file does not exist, quitting program ..."); quit())
-scenarios = fetch_scenarios(config)
+scenarios = fetch_scenarios(config, length(keys(ref[:nw][0][:bus])))
 @assert size(scenarios)[1] == config["batchsize"]
 
 if config["parallel"] == "y"
