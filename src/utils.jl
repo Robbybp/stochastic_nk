@@ -1,5 +1,5 @@
 
-function fetch_scenarios(config, numbuses)
+function fetch_scenarios(config)
     scenariofile = config["scenariofile"]
     zipfile = config["zipfile"]
     numscenarios = config["numscenarios"]

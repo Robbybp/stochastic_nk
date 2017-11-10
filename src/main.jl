@@ -34,7 +34,7 @@ config["zipfile"] = string(config["path"], "scenario_data/case", length(keys(ref
 
 # fetch the scenarios for the run
 (!isfile(config["zipfile"])) && (println(">> scenario file does not exist, quitting program ..."); quit())
-scenarios = fetch_scenarios(config, length(keys(ref[:nw][0][:bus])))
+scenarios = fetch_scenarios(config)
 @assert size(scenarios)[1] == config["batchsize"]
 
 if config["parallel"] == "y"
