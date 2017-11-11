@@ -22,12 +22,12 @@ function parse_commandline()
         "--timeout", "-t"
         help = "time limit for the run in seconds"
         arg_type = Int
-        default = 3600
+        default = 86400
 
         "--gap", "-g"
         help = "optimality gap in %"
         arg_type = Float64
-        default = 1e-3
+        default = 1e-6
 
         "--batchsize", "-s"
         help = "batch size for Lshaped algorithm"

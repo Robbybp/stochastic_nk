@@ -74,6 +74,8 @@ function Lshaped(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, 
         end
     end
 
+    config["final_mipgap"] = getobjgap(master)
+
     return status, obj, sol
 end
 

@@ -25,14 +25,14 @@ function write_solution(config, ref)
     println(">> writing solution to file")
     delete!(config, "bounds")
     delete!(config, "theta_ub")
-    filename = string("../output_from_runs/case", length(ref[:nw][0][:bus]), "_s", config["batchsize"], "_id", config["batchid"], "_k", config["budget"], ".txt")
+    filename = string("../output_from_runs/case", length(ref[:nw][0][:bus]), "_s", config["batchsize"], "_id", config["batchid"], "_k", config["budget"], "_algo", config["algo"], ".txt")
     println(">> output filename: $filename")
 
     open(filename, "w") do f
         for (i, val) in config
             if i == "sol"
-                write(f, "branch = $(sol[:x])\n")
-                write(f, "gen = $(sol[:y])\n")
+                write(f, "branch = $(val[:x])\n")
+                write(f, "gen = $(val[:y])\n")
             else
                 write(f, "$i = $val\n")
             end

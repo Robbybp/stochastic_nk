@@ -19,7 +19,7 @@ include("benders.jl")
 config = parse_commandline()
 config["casefile"] = string(config["path"], config["file"])
 config["numscenarios"] = config["batchsize"] * config["numbatches"]
-solver_to_use = CplexSolver(CPX_PARAM_THREADS=1)
+solver_to_use = CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_TILIM=config["timeout"])
 (config["solver"] == "gurobi") && (solver_to_use = GurobiSolver(OutputFlag=0,Threads=1))
 
 for (arg, val) in config
@@ -62,11 +62,18 @@ if config["algo"] == "full"
     end
 
     data = PMs.parse_file(config["casefile"])
-    m = create_full_model(scenarios, ref, config, Model(solver=solver_to_use))
-    @time solve(m)
-    println(">> obj full model: $(getobjectivevalue(m))")
+    m = create_full_model(scenarios, ref, config, Model(solver=CplexSolver(CPX_PARAM_TILIM=config["timeout"])))
+    status, solve_time, solve_bytes_alloc, sec_in_gc = @timed solve(m)
+
+    @printf ">> obj = %.4f MW \n" getobjectivevalue(m)*ref[:nw][0][:baseMVA]
     println(">> $(getvalue(getindex(m, :x)))")
     println(">> $(getvalue(getindex(m, :y)))")    
+
+    config["time"] = solve_time
+    config["final_mipgap"] = getobjgap(m)
+    config["obj"] = getobjectivevalue(m)*ref[:nw][0][:baseMVA]
+
+    write_solution(config, ref)
     
 end
 
@@ -108,17 +115,18 @@ if config["algo"] != "full"
     master.ext = create_expression_vectors(scenarios, ref, config, master_model=master)
     
     println(">> Lshaped")
-    tic()
-    @time status, obj, sol = Lshaped(scenarios, ref, config, A, sense, l, u, master, CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0))
-    config["time"] = toq()
+    # op: (status, obj, sol)
+    op, solve_time, solve_bytes_alloc, sec_in_gc = @timed Lshaped(scenarios, ref, config, A, sense, l, u, master, CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0))
+    config["time"] = solve_time
     println(">> algorithm ended")
 
-    @printf ">> obj = %.4f MW \n" obj*ref[:nw][0][:baseMVA]
-    println(">> branch_indexes = $(sol[:x])")
-    println(">> gen_indexes = $(sol[:y])")
+    @printf ">> obj = %.4f MW \n" op[2]*ref[:nw][0][:baseMVA]
+    println(">> branch_indexes = $(op[3][:x])")
+    println(">> gen_indexes = $(op[3][:y])")
     
-    config["obj"] = obj*ref[:nw][0][:baseMVA]
-    config["sol"] = sol
+    config["obj"] = op[2]*ref[:nw][0][:baseMVA]
+    config["sol"] = op[3]
+
     total_load = 0
     for (i, bus) in ref[:nw][0][:bus]
         total_load += bus["pd"]
