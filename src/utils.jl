@@ -8,9 +8,9 @@ function fetch_scenarios(config)
     batchid = config["batchid"]
     scenario_dir = string(config["path"], "scenario_data/")
     
-    (!isfile(scenariofile)) && (run(`tar -zxvf $zipfile -C $scenario_dir`))
+    # (!isfile(scenariofile)) && (run(`tar -zxvf $zipfile -C $scenario_dir`))
     scenarios = readdlm(scenariofile)
-    (isfile(zipfile)) && (run(`rm -f $scenariofile`))
+    # (isfile(zipfile)) && (run(`rm -f $scenariofile`))
 
     (size(scenarios)[1] < numscenarios) && (println(">> not enough scenarios available for the run, quitting program ...."); quit())
     (batchid > numbatches) && (println(">> number of batches and batch id inconsistent, quitting program ...."); quit())

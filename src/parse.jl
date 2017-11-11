@@ -17,7 +17,7 @@ function parse_commandline()
         "--algo", "-a"
         help = "algorithm to run (full/Lshaped)"
         arg_type = String
-        default = "Lshapedlazy"
+        default = "Lshaped"
 
         "--timeout", "-t"
         help = "time limit for the run in seconds"
@@ -27,7 +27,7 @@ function parse_commandline()
         "--gap", "-g"
         help = "optimality gap in %"
         arg_type = Float64
-        default = 1e-6
+        default = 1e-4
 
         "--batchsize", "-s"
         help = "batch size for Lshaped algorithm"
