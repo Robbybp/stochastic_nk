@@ -19,7 +19,7 @@ include("benders.jl")
 config = parse_commandline()
 config["casefile"] = string(config["path"], config["file"])
 config["numscenarios"] = config["batchsize"] * config["numbatches"]
-solver_to_use = CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_TILIM=config["timeout"],CPX_PARAM_MIP_Tolerances_MIPGap=config["gap"])
+solver_to_use = CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_TILIM=config["timeout"],CPX_PARAM_EPGAP=config["gap"])
 (config["solver"] == "gurobi") && (solver_to_use = GurobiSolver(OutputFlag=0,Threads=1))
 
 for (arg, val) in config
@@ -62,7 +62,7 @@ if config["algo"] == "full"
     end
 
     data = PMs.parse_file(config["casefile"])
-    m = create_full_model(scenarios, ref, config, Model(solver=CplexSolver(CPX_PARAM_TILIM=config["timeout"],CPX_PARAM_MIP_Tolerances_MIPGap=config["gap"])))
+    m = create_full_model(scenarios, ref, config, Model(solver=CplexSolver(CPX_PARAM_TILIM=config["timeout"],CPX_PARAM_EPGAP=config["gap"])))
     status, solve_time, solve_bytes_alloc, sec_in_gc = @timed solve(m)
 
     @printf ">> obj = %.4f MW \n" getobjectivevalue(m)*ref[:nw][0][:baseMVA]
