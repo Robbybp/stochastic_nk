@@ -106,6 +106,7 @@ if config["algo"] != "full"
 
     # create the relaxed master problem for the first iteration 
     println(">> creating master problem")
+    (config["algo"] == "Lshaped_t") && (solver_to_use = CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0,CPX_PARAM_EPGAP=config["gap"]))
     master = create_master_model(scenarios, ref, config, Model(solver=solver_to_use))
     
     # create subproblem nonchanging matrices
@@ -116,7 +117,7 @@ if config["algo"] != "full"
     
     println(">> Lshaped")
     # op: (status, obj, sol)
-    op, solve_time, solve_bytes_alloc, sec_in_gc = @timed Lshaped(scenarios, ref, config, A, sense, l, u, master, CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0))
+    op, solve_time, solve_bytes_alloc, sec_in_gc = @timed Lshaped_traditional(scenarios, ref, config, A, sense, l, u, master, CplexSolver(CPX_PARAM_THREADS=1,CPX_PARAM_SCRIND=0))
     config["time"] = solve_time
     println(">> algorithm ended")
 

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-for s in `seq 250 250 2000`
+for s in `seq 5 5 50`
 
 do 
-    sbatch --job-name=case14_full_$k --output=./output/case14_full_$s.txt ./runscript.sh --file pglib_opf_case14_ieee_nk.m --algo full --timeout 3600 --batchsize $s  --batchid 1 --numbatches 1 -k 5
-    sbatch --job-name=case14_Lshaped_$k --output=./output/case14_Lshaped_$s.txt ./runscript.sh --file pglib_opf_case14_ieee_nk.m --algo Lshaped --timeout 3600 --batchsize $s --batchid 1 --numbatches 1 -k 5 --parallel y --workers 8
+    sbatch --job-name=case118_full_$k --output=./output/case118_full_$s.txt ./runscript.sh --file pglib_opf_case118_ieee_nk.m --algo full --timeout 3600 --batchsize $s  --batchid 1 --numbatches 1 -k 5
+    sbatch --job-name=case118_Lshaped_$k --output=./output/case118_Lshaped_$s.txt ./runscript.sh --file pglib_opf_case118_ieee_nk.m --algo Lshaped --timeout 3600 --batchsize $s --batchid 1 --numbatches 1 -k 5 --parallel y --workers 8
 done
 

@@ -89,6 +89,7 @@ function Lshaped_traditional(scenarios, ref::Dict{Symbol,Any}, config::Dict{Stri
     numsubproblem_constr = length(sense)
 
     @objective(master, Max, sum(θ))
+    println(master)
     
     lb = -1e5
     iteration = 1
@@ -126,7 +127,19 @@ function Lshaped_traditional(scenarios, ref::Dict{Symbol,Any}, config::Dict{Stri
         subproblem_obj = [-subproblem_sol[s].objval for s in 1:numscenarios]
         lb = max(lb, sum(subproblem_obj))
         
+        lines = Int[]
+        gens = Int[]
+
+        for i in keys(ref[:nw][0][:gen])
+            (yval[i] > 0.9) && (push!(gens, i))
+        end
+
+        for i in keys(ref[:nw][0][:branch])
+            (xval[i] > 0.9) && (push!(lines, i))
+        end
+
         @constraint(master, [s=1:numscenarios], θ[s] <= -dot(master.ext[:proj_expr][s], subproblem_sol[s].attrs[:lambda]))
+        @constraint(master, sum(x[i] for i in lines) + sum(y[i] for i in gens) <= config["budget"]-1)
         solve(master)
         ub = getobjectivevalue(master)
         iteration += 1
@@ -153,5 +166,8 @@ function Lshaped_traditional(scenarios, ref::Dict{Symbol,Any}, config::Dict{Stri
         end
     end
 
-    return :Optimal, obj, sol
+    config["final_mipgap"] = getobjgap(master)
+
+    return status, obj, sol
+
 end
