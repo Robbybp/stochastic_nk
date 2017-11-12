@@ -1,0 +1,114 @@
+>> parallel => n
+>> bt => n
+>> numbatches => 1
+>> path => ../data/
+>> batchsize => 1500
+>> interdict => lg
+>> solver => cplex
+>> casefile => ../data/pglib_opf_case14_ieee_nk.m
+>> algo => full
+>> workers => 0
+>> budget => 5
+>> numscenarios => 1500
+>> timeout => 3600
+>> gap => 1.0e-6
+>> batchid => 1
+>> file => pglib_opf_case14_ieee_nk.m
+INFO: extending matpower format by appending matrix "branch_prob" onto "branch"
+INFO: extending matpower format by appending matrix "gen_prob" onto "gen"
+INFO: extending matpower format by appending matrix "branch_prob" onto "branch"
+INFO: extending matpower format by appending matrix "gen_prob" onto "gen"
+Aggregator has done 31859 substitutions...
+Tried aggregator 3 times.
+MIP Presolve eliminated 146587 rows and 22654 columns.
+MIP Presolve modified 106012 coefficients.
+Aggregator did 31859 substitutions.
+Reduced MIP has 702055 rows, 449512 columns, and 2278877 nonzeros.
+Reduced MIP has 22 binaries, 1 generals, 0 SOSs, and 0 indicators.
+Presolve time = 16.24 sec. (21995.23 ticks)
+Found incumbent of value 0.334763 after 24.34 sec. (25764.67 ticks)
+Probing fixed 0 vars, tightened 279574 bounds.
+Probing time = 2.07 sec. (4184.75 ticks)
+Tried aggregator 1 time.
+MIP Presolve eliminated 11053 rows and 7169 columns.
+MIP Presolve modified 10833 coefficients.
+Reduced MIP has 691002 rows, 442343 columns, and 2243216 nonzeros.
+Reduced MIP has 22 binaries, 1 generals, 0 SOSs, and 0 indicators.
+Presolve time = 2.56 sec. (1585.42 ticks)
+Probing fixed 0 vars, tightened 32940 bounds.
+Probing time = 0.46 sec. (272.12 ticks)
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 32 threads.
+Root relaxation solution time = 59.66 sec. (27544.18 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                            0.3348        2.5900           673.68%
+*     0+    0                            0.5197        2.5900           398.36%
+      0     0        2.3628    22        0.5197        2.3628     1353  354.64%
+      0     0        2.3627    20        0.5197    Cuts: 9063    12783  354.63%
+      0     0        2.3605    19        0.5197    Cuts: 5485    85689  354.21%
+      0     0        2.3605    19        0.5197    Cuts: 4263    90096  354.21%
+      0     0        2.3605    18        0.5197     Cuts: 295    91192  354.21%
+Heuristic still looking.
+Heuristic still looking.
+Heuristic still looking.
+Heuristic still looking.
+*     0+    0                            0.7214        2.3605           227.20%
+      0     2        2.3605    18        0.7214        2.2477    91192  211.56%
+Elapsed time = 3110.29 sec. (1540680.64 ticks, tree = 0.01 MB, solutions = 3)
+      1     3        2.2414    18        0.7214        2.2477   118085  211.56%
+      2     3        2.2561    18        0.7214        2.2477   117840  211.56%
+      3     4        2.2172    17        0.7214        2.2477   129746  211.56%
+      4     6        2.1356    16        0.7214        2.2477   170719  211.56%
+      5     7        2.1263    15        0.7214        2.2477   181274  211.56%
+      6     4        2.1076    17        0.7214        2.2477   144600  211.56%
+      7     5        2.1044    17        0.7214        2.2477   157330  211.56%
+WARNING: Not solved to optimality, status: UserLimit
+>> obj = 72.1418 MW 
+>> x: 1 dimensions:
+[ 1] = 1.0
+[ 2] = 0.0
+[16] = 0.0
+[11] = 0.0
+[ 7] = 0.0
+[ 9] = 0.0
+[10] = 0.0
+[19] = 0.0
+[17] = 0.0
+[ 8] = 0.0
+[ 6] = 0.0
+[ 4] = 1.0
+[ 3] = 0.0
+[ 5] = 1.0
+[20] = 0.0
+[13] = 0.0
+[14] = 0.0
+[15] = 0.0
+[12] = 0.0
+[18] = 0.0
+>> y: 1 dimensions:
+[4] = 0.0
+[2] = 1.0
+[3] = 0.0
+[5] = 0.0
+[1] = 1.0
+>> writing solution to file
+>> output filename: ../output_from_runs/case14_s1500_id1_k5_algofull.txt
+
+Implied bound cuts applied:  431
+Flow cuts applied:  3582
+Mixed integer rounding cuts applied:  2582
+Lift and project cuts applied:  2
+Gomory fractional cuts applied:  2
+
+Root node processing (before b&c):
+  Real time             = 3106.63 sec. (1540287.52 ticks)
+Parallel b&c, 32 threads:
+  Real time             =  494.89 sec. (297983.17 ticks)
+  Sync time (average)   =  432.05 sec.
+  Wait time (average)   =    1.54 sec.
+                          ------------
+Total (root+branch&cut) = 3601.51 sec. (1838270.69 ticks)
