@@ -242,7 +242,7 @@ function create_bound_tightening_model(scenarios, ref::Dict{Symbol,Any}, config:
     @constraint(model, [s=1:numscenarios], primalobj_expr[s] == kcl_expr[s] + pgmax_expr[s] + tmin_expr[s] + tmax_expr[s] + dc_expr[s] + va_expr[s] + loadshed_expr[s])
 
     # bound constraint
-    @constraint(model, sum(primalobj_expr)/numscenarios >= relaxation_obj - 1e-5)
+    # @constraint(model, sum(primalobj_expr)/numscenarios >= relaxation_obj - 1e-5)
 
     
     return model

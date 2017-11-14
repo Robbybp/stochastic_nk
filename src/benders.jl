@@ -28,6 +28,9 @@ function Lshaped(scenarios, ref::Dict{Symbol,Any}, config::Dict{String,Any}, A, 
         if config["parallel"] == "n"
             for s in 1:numscenarios
                 subproblem_sol[s] = linprog(c[s], A, sense, b[s], l, u, solver)
+                if subproblem_sol[s].status != :Optimal
+                    println(s)
+                end
                 @assert subproblem_sol[s].status == :Optimal
             end
         else
