@@ -1,2 +1,3 @@
-# stochastic_nk
-Stochastic N-k  Interdiction for Electric Transmission Systems
+# Stochastic N-k Interdiction for Transmission Systems
+
+Repository that contains the Julia code.
