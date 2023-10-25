@@ -72,7 +72,7 @@ function get_table_line_cp(iter, lb, ub, gap, start_time, fields, field_chars)
         elseif f == :Time
             val = string(Int(ceil((now() - start_time).value/1000.0))) * "s"
         elseif f == :Gap 
-            val = isinf(gap) ? "Inf" :  "⫹" * string(round(gap; digits = 2)) * "%"
+            val = isinf(gap) ? "∞" : string(round(gap; digits = 2)) * "%"
         end
         if length(val) > field_chars[i]
             # too long to display shouldn't happen normally but is better than error
