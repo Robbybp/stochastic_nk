@@ -34,6 +34,10 @@ function parse_commandline()
         arg_type = Float64
         default = 1e-2
 
+        "--use_lazy"
+        help = "flag to use the lazy callback"
+        action = :store_true
+
         # the following options are valid only if the problem type is stochastic
         "--batch_id", "-b"
         help = "batch id for running the (id) batch"

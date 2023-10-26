@@ -7,25 +7,29 @@
 
 const GRB_ENV = Gurobi.Env()
 
+""" run algorithm for determinsitic N-k """
 function run_deterministic(config::Dict, mp_file::String)
-    
-    fields, field_chars = get_table_config(problem = :deterministic)
-    print_table_header(fields, field_chars)
-        
-    start_time = now() 
-
     data = PowerModels.parse_file(mp_file)
     add_total_load_info(data)
     ref = PowerModels.build_ref(data)[:it][:pm][:nw][0]
 
-    return solve_deterministic(
-        config, data, ref;
-        start_time = start_time, 
-        fields = fields, field_chars = field_chars)
-     
+    if (config["use_lazy"] == false)
+        fields, field_chars = get_table_config(problem = :deterministic)
+        print_table_header(fields, field_chars)
+        
+        start_time = now() 
+
+        return solve_deterministic_iterative(
+            config, data, ref;
+            start_time = start_time, 
+            fields = fields, field_chars = field_chars)
+    end  
+    
+    return solve_deterministic_lazy(config, data, ref)
 end 
 
-function solve_deterministic(config::Dict, data::Dict, ref::Dict; 
+""" iterative solver without any lazy callbacks """
+function solve_deterministic_iterative(config::Dict, data::Dict, ref::Dict; 
     start_time = now(), fields = nothing, field_chars = nothing)
 
     if isnothing(fields) || isnothing(field_chars)
@@ -106,6 +110,62 @@ function solve_deterministic(config::Dict, data::Dict, ref::Dict;
         iteration, lb, ub, get_time(start_time), rel_gap, incumbent
     )
     
+end 
+
+""" solve with lazy constraint callback """
+function solve_deterministic_lazy(config::Dict, data::Dict, ref::Dict)
+
+    model = direct_model(Gurobi.Optimizer(GRB_ENV))
+    # set_attribute(model, "LogToConsole", 0)
+    set_attribute(model, "TimeLimit", config["timeout"])
+    MOI.set(model, MOI.RelativeGapTolerance(), config["optimality_gap"] / 100.0)
+
+    # eta represents the min load shed 
+    @variable(model, 1E-6 <= eta <= 1E6)
+    # interdiction variables
+    @variable(model, x_line[i in keys(ref[:branch])], Bin)
+    @variable(model, x_gen[i in keys(ref[:gen])], Bin)
+    
+    # budget constraints 
+    @constraint(model, sum(x_line) == config["line_budget"])
+    @constraint(model, sum(x_gen) == config["generator_budget"])
+    @constraint(model, sum(x_line) + sum(x_gen) == config["budget"])
+
+    # objective 
+    @objective(model, Max, eta)
+
+    TOL = 1E-6
+
+    function inner_problem(cb_data)
+        status = callback_node_status(cb_data, model)
+        (status != MOI.CALLBACK_NODE_STATUS_INTEGER) && (return)
+        current_x_line = Dict(i => JuMP.callback_value(cb_data, x_line[i]) for i in keys(ref[:branch]))
+        current_x_gen = Dict(i => JuMP.callback_value(cb_data, x_gen[i]) for i in keys(ref[:gen]))
+        current_lines = filter!(z -> last(z) > TOL, current_x_line) |> keys |> collect
+        current_gens = filter!(z -> last(z) > TOL, current_x_gen) |> keys |> collect
+        cut_info = get_inner_solution(data, ref, current_gens, current_lines)
+        woods_cut = @build_constraint(eta <= cut_info.load_shed + sum([cut_info.pg[i] * x_gen[i] for i in keys(cut_info.pg)]) + 
+            sum([cut_info.p[i] * x_line[i] for i in keys(cut_info.p)]))
+        MOI.submit(model, MOI.LazyConstraint(cb_data), woods_cut)
+    end
+
+    MOI.set(model, MOI.LazyConstraintCallback(), inner_problem)
+    JuMP.optimize!(model)
+
+    iterations = 0
+    run_time = JuMP.solve_time(model)
+    objective_value = JuMP.objective_value(model)
+    bound = JuMP.objective_bound(model)
+    rel_gap = JuMP.relative_gap(model)
+    current_x_line = Dict(i => JuMP.value(x_line[i]) for i in keys(ref[:branch]))
+    current_x_gen = Dict(i => JuMP.value(x_gen[i]) for i in keys(ref[:gen]))
+    current_lines = filter!(z -> last(z) > TOL, current_x_line) |> keys |> collect
+    current_gens = filter!(z -> last(z) > TOL, current_x_gen) |> keys |> collect
+    incumbent = SolutionDeterministic(current_lines, current_gens, objective_value, Dict())
+
+    return ResultsDeterministic(
+        iterations, objective_value, bound, run_time, rel_gap, incumbent
+    )
 end 
 
 """ get load shed and power flow solution on interdictable components""" 
