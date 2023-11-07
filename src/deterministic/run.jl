@@ -31,7 +31,6 @@ end
 """ iterative solver without any lazy callbacks """
 function solve_deterministic_iterative(config::Dict, data::Dict, ref::Dict; 
     start_time = now(), fields = nothing, field_chars = nothing)
-
     if isnothing(fields) || isnothing(field_chars)
         fields, field_chars = get_table_config(problem = :deterministic)
     end 
@@ -63,7 +62,6 @@ function solve_deterministic_iterative(config::Dict, data::Dict, ref::Dict;
 
     get_ub(model) = JuMP.objective_value(model)
 
-    
     iteration = 0
 
     while (rel_gap > config["optimality_gap"])
@@ -109,12 +107,10 @@ function solve_deterministic_iterative(config::Dict, data::Dict, ref::Dict;
     return ResultsDeterministic(
         iteration, lb, ub, get_time(start_time), rel_gap, incumbent
     )
-    
 end 
 
 """ solve with lazy constraint callback """
 function solve_deterministic_lazy(config::Dict, data::Dict, ref::Dict)
-
     model = direct_model(Gurobi.Optimizer(GRB_ENV))
     # set_attribute(model, "LogToConsole", 0)
     set_attribute(model, "TimeLimit", config["timeout"])
@@ -170,6 +166,42 @@ end
 
 """ get load shed and power flow solution on interdictable components""" 
 function get_inner_solution(data, ref, generators::Vector, lines::Vector)::NamedTuple
+    case_data = data
+    case = deepcopy(case_data)
+    for i in generators 
+        case["gen"][string(i)]["gen_status"] = 0
+    end 
+
+    for i in lines 
+        case["branch"][string(i)]["br_status"] = 0
+    end 
+
+    PowerModels.propagate_topology_status!(case)
+    lp_optimizer = JuMP.optimizer_with_attributes(
+        () -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0
+    )
+    
+    pm = instantiate_model(case, DCPPowerModel, PowerModels._build_mld)
+    result = optimize_model!(pm, optimizer = lp_optimizer)
+
+    # result = solve_model(case, DCPPowerModel, lp_optimizer, PowerModels._build_mld)
+    load_served = [load["pd"] for (_, load) in result["solution"]["load"]] |> sum
+    load_shed = case_data["total_load"] - load_served
+
+    pg = Dict(i => result["solution"]["gen"][string(i)]["pg"]
+        for i in keys(ref[:gen]) if haskey(result["solution"]["gen"], string(i)))
+    
+    p = Dict(i => max(
+        abs(result["solution"]["branch"][string(i)]["pf"]), 
+        abs(result["solution"]["branch"][string(i)]["pt"])
+        ) for i in keys(ref[:branch]) if haskey(result["solution"]["branch"], string(i)) 
+    )
+
+    return (load_shed = load_shed, pg = pg, p = p)
+end 
+
+""" get load shed and power flow solution on fractional interdictable components""" 
+function get_inner_solution(data, ref, generators::Dict{Int,Float64}, lines::Dict{Int,Float64})::NamedTuple
     case_data = data
     case = deepcopy(case_data)
     for i in generators 
