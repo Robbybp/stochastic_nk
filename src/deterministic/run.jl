@@ -95,7 +95,8 @@ function solve_deterministic_iterative(config::Dict, data::Dict, ref::Dict;
             sum([cut_info.p[i] * x_line[i] for i in keys(cut_info.p)])
         )
 
-        rel_gap = abs(ub - lb)/(1E-6 + abs(lb)) * 100
+        rel_gap = (ub - lb)/(1E-6 + abs(lb)) * 100
+        (rel_gap < 0.0) && (ub = lb; rel_gap = 0.0)
         print_table_cp(iteration, lb, ub, rel_gap, start_time, fields, field_chars)
         
         if time_limit_reached(start_time, float(config["timeout"]))
