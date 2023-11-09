@@ -13,7 +13,7 @@ function run_deterministic(config::Dict, mp_file::String)
     add_total_load_info(data)
     ref = PowerModels.build_ref(data)[:it][:pm][:nw][0]
 
-    if (config["use_lazy"] == false)
+    if (config["use_iterative"])
         fields, field_chars = get_table_config(problem = :deterministic)
         print_table_header(fields, field_chars)
         
