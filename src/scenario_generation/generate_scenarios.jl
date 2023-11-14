@@ -16,7 +16,7 @@ PMs.silence()
 julia --project=. src/scenario_generation/generate_scenarios.jl 
 julia --project=. src/scenario_generation/generate_scenarios.jl --case CATS.m --use_clusters --num_min_outages 15 --num_max_outages 30 --num_scenarios 1000
 julia --project=. src/scenario_generation/generate_scenarios.jl --case pglib_opf_case240_pserc.m --use_clusters --num_min_outages 10 --num_max_outages 20 --num_scenarios 1000
-
+julia --project=. src/scenario_generation/generate_scenarios.jl --case RTS_GMLC.m --use_clusters --num_min_outages 4 --num_max_outages 6 --num_scenarios 200
 """
 
 function parse_commandline()
