@@ -7,7 +7,17 @@ function parse_commandline()
         "--case", "-c"
         help = "case file"
         arg_type = String
-        default = "pglib_opf_case14_ieee.m"
+        default = "pglib_opf_case240_pserc.m"
+
+        "--scenarios", "-s"
+        help = "scenario file"
+        arg_type = String
+        default = "pglib_opf_case240_pserc_1.json"
+
+        "--maximum_scenarios", "-m"
+        help = "limits the total number of scenarios used from scenario file"
+        arg_type = Int
+        default = 50
 
         "--data_path", "-p"
         help = "data directory path"
@@ -22,7 +32,7 @@ function parse_commandline()
         "--problem", "-a"
         help = "problem selection - deterministic/stochastic"
         arg_type = String
-        default = "deterministic"
+        default = "stochastic"
 
         "--timeout", "-t"
         help = "time limit for the run in seconds"
@@ -109,12 +119,7 @@ function get_filenames_with_paths(params)
     if params["problem"] == "deterministic"
         scenario_file = nothing
     else 
-        scenario_file = params["data_path"] * "scenario_data/" * case_name * ".tar.gz"
-        @info scenario_file
-        if isfile(scenario_file) == false 
-            @error "$scenario_file does not exist, quitting."
-            exit()
-        end 
+        scenario_file = params["data_path"] * "scenario_data/" * params["scenarios"]
     end 
     return (mp_file = matpower_file, scenario_file = scenario_file)
 end 

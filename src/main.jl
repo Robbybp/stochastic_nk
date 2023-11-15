@@ -3,6 +3,7 @@ using JuMP
 using Gurobi 
 using PrettyTables
 using Dates
+using JSON
 
 PowerModels.silence()
 
@@ -11,6 +12,8 @@ include("table_log.jl")
 include("data_helper.jl")
 include("deterministic/types.jl")
 include("deterministic/run.jl")
+include("stochastic/types.jl")
+include("stochastic/run.jl")
 
 
 time_limit_reached(start_time::DateTime, limit_in_seconds::Float64) = 
@@ -44,12 +47,11 @@ function run(config, files)
         # write_results(config, results)
     end
     # TODO: need to implement 
-    """
+    
     if config["problem"] == "stochastic"
         results = run_stochastic(config, mp_file, scenario_file) 
-        write_results(config, results)
+        # write_results(config, results)
     end
-    """
 end 
 
 main()
