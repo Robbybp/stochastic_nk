@@ -9,7 +9,7 @@ function parse_commandline()
         arg_type = String
         default = "pglib_opf_case240_pserc.m"
 
-        "--scenarios", "-s"
+        "--scenario_file", "-s"
         help = "scenario file"
         arg_type = String
         default = "pglib_opf_case240_pserc_1.json"
