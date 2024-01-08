@@ -9,16 +9,6 @@ function parse_commandline()
         arg_type = String
         default = "pglib_opf_case240_pserc.m"
 
-        "--scenario_file", "-s"
-        help = "scenario file"
-        arg_type = String
-        default = "pglib_opf_case240_pserc_1.json"
-
-        "--maximum_scenarios", "-m"
-        help = "limits the total number of scenarios used from scenario file"
-        arg_type = Int
-        default = 50
-
         "--data_path", "-p"
         help = "data directory path"
         arg_type = String
@@ -49,6 +39,16 @@ function parse_commandline()
         action = :store_true
 
         # the following options are valid only if the problem type is stochastic
+        "--scenario_file", "-s"
+        help = "scenario file"
+        arg_type = String
+        default = "pglib_opf_case240_pserc_1.json"
+
+        "--maximum_scenarios", "-m"
+        help = "limits the total number of scenarios used from scenario file"
+        arg_type = Int
+        default = 50
+        
         "--batch_id", "-b"
         help = "batch id for running the (id) batch"
         arg_type = Int
@@ -68,6 +68,10 @@ function parse_commandline()
         help = "budget for interdiction"
         arg_type = Int
         default = 2
+
+        "--use_separate_budgets" 
+        help = "use separate line and generator budgets" 
+        action = :store_true 
 
         "--line_budget", "-l"
         help = "budget for lines"

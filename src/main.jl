@@ -4,12 +4,16 @@ using Gurobi
 using PrettyTables
 using Dates
 using JSON
+using HiGHS
+
+const GRB_ENV = Gurobi.Env()
 
 PowerModels.silence()
 
 include("cliparser.jl")
 include("table_log.jl")
 include("data_helper.jl")
+include("common/dc-ls.jl")
 include("deterministic/types.jl")
 include("deterministic/run.jl")
 include("stochastic/types.jl")
@@ -43,6 +47,7 @@ function run(config, files)
     
     if config["problem"] == "deterministic"
         results = run_deterministic(config, mp_file) 
+        @show results
         # TODO: implement result writing to file 
         # write_results(config, results)
     end

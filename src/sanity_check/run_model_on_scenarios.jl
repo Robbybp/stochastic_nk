@@ -99,7 +99,6 @@ function run(config, files)
     scenario_load_shed = Dict{String,Float64}(i => 0.0 for i in keys(scenario_data))
 
     for (id, scenario) in collect(scenario_data)
-        (id != "81") && (continue)
         @info "running scenario $id.."
         generators = scenario["gen"]
         lines = scenario["branch"]
@@ -107,8 +106,6 @@ function run(config, files)
         case = deepcopy(data)
 
         for i in generators 
-            # case["gen"][string(i)]["pmin"] = 0.0 
-            # case["gen"][string(i)]["pmax"] = 0.0 
             case["gen"][string(i)]["gen_status"] = 0
         end 
         for i in lines 
@@ -117,12 +114,9 @@ function run(config, files)
         PMs.propagate_topology_status!(case)
         load_shed, isolated_load_shed = run_dc_ls(case, loads)
 
-        # load_served = [load["pd"] for (_, load) in result["solution"]["load"]] |> sum
-        # load_shed = data["total_load"] - load_served
-        # @show load_shed
         total_load_shed = isolated_load_shed + sum(values(load_shed))
         scenario_load_shed[id] = total_load_shed
-        @info "load shed = $total_load_shed"
+        @debug "load shed = $total_load_shed"
     end 
     
     output_file = config["output_path"] * "ls_" * config["scenario_file"]

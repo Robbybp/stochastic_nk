@@ -5,11 +5,10 @@
  * DOI: 10.1109/TPWRS.2008.2004825
 """
 
-const GRB_ENV = Gurobi.Env()
-
 """ run algorithm for determinsitic N-k """
 function run_deterministic(config::Dict, mp_file::String)
-    data = PowerModels.parse_file(mp_file)
+    data = PowerModels.parse_file(mp_file; validate=false)
+    PowerModels.make_per_unit!(data)
     add_total_load_info(data)
     ref = PowerModels.build_ref(data)[:it][:pm][:nw][0]
 
@@ -53,9 +52,11 @@ function solve_deterministic_iterative(config::Dict, data::Dict, ref::Dict;
     @variable(model, x_gen[i in keys(ref[:gen])], Bin)
     
     # budget constraints 
-    @constraint(model, sum(x_line) == config["line_budget"])
-    @constraint(model, sum(x_gen) == config["generator_budget"])
     @constraint(model, sum(x_line) + sum(x_gen) == config["budget"])
+    if config["use_separate_budgets"]
+        @constraint(model, sum(x_gen) == config["generator_budget"])
+        @constraint(model, sum(x_line) == config["line_budget"])
+    end
 
     # objective 
     @objective(model, Max, eta)
@@ -124,13 +125,14 @@ function solve_deterministic_lazy(config::Dict, data::Dict, ref::Dict)
     @variable(model, x_gen[i in keys(ref[:gen])], Bin)
     
     # budget constraints 
-    @constraint(model, sum(x_line) == config["line_budget"])
-    @constraint(model, sum(x_gen) == config["generator_budget"])
     @constraint(model, sum(x_line) + sum(x_gen) == config["budget"])
+    if config["use_separate_budgets"]
+        @constraint(model, sum(x_line) == config["line_budget"])
+        @constraint(model, sum(x_gen) == config["generator_budget"])
+    end 
 
     # objective 
     @objective(model, Max, eta)
-
     TOL = 1E-6
 
     function inner_problem(cb_data)
@@ -163,76 +165,4 @@ function solve_deterministic_lazy(config::Dict, data::Dict, ref::Dict)
     return ResultsDeterministic(
         iterations, objective_value, bound, run_time, rel_gap, incumbent
     )
-end 
-
-""" get load shed and power flow solution on interdictable components""" 
-function get_inner_solution(data, ref, generators::Vector, lines::Vector)::NamedTuple
-    case_data = data
-    case = deepcopy(case_data)
-    for i in generators 
-        case["gen"][string(i)]["gen_status"] = 0
-    end 
-
-    for i in lines 
-        case["branch"][string(i)]["br_status"] = 0
-    end 
-
-    PowerModels.propagate_topology_status!(case)
-    lp_optimizer = JuMP.optimizer_with_attributes(
-        () -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0
-    )
-    
-    pm = instantiate_model(case, DCPPowerModel, PowerModels._build_mld)
-    result = optimize_model!(pm, optimizer = lp_optimizer)
-
-    # result = solve_model(case, DCPPowerModel, lp_optimizer, PowerModels._build_mld)
-    load_served = [load["pd"] for (_, load) in result["solution"]["load"]] |> sum
-    load_shed = case_data["total_load"] - load_served
-
-    pg = Dict(i => result["solution"]["gen"][string(i)]["pg"]
-        for i in keys(ref[:gen]) if haskey(result["solution"]["gen"], string(i)))
-    
-    p = Dict(i => max(
-        abs(result["solution"]["branch"][string(i)]["pf"]), 
-        abs(result["solution"]["branch"][string(i)]["pt"])
-        ) for i in keys(ref[:branch]) if haskey(result["solution"]["branch"], string(i)) 
-    )
-
-    return (load_shed = load_shed, pg = pg, p = p)
-end 
-
-""" get load shed and power flow solution on fractional interdictable components""" 
-function get_inner_solution(data, ref, generators::Dict{Int,Float64}, lines::Dict{Int,Float64})::NamedTuple
-    case_data = data
-    case = deepcopy(case_data)
-    for i in generators 
-        case["gen"][string(i)]["gen_status"] = 0
-    end 
-
-    for i in lines 
-        case["branch"][string(i)]["br_status"] = 0
-    end 
-
-    PowerModels.propagate_topology_status!(case)
-    lp_optimizer = JuMP.optimizer_with_attributes(
-        () -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0
-    )
-    
-    pm = instantiate_model(case, DCPPowerModel, PowerModels._build_mld)
-    result = optimize_model!(pm, optimizer = lp_optimizer)
-
-    # result = solve_model(case, DCPPowerModel, lp_optimizer, PowerModels._build_mld)
-    load_served = [load["pd"] for (_, load) in result["solution"]["load"]] |> sum
-    load_shed = case_data["total_load"] - load_served
-
-    pg = Dict(i => result["solution"]["gen"][string(i)]["pg"]
-        for i in keys(ref[:gen]) if haskey(result["solution"]["gen"], string(i)))
-    
-    p = Dict(i => max(
-        abs(result["solution"]["branch"][string(i)]["pf"]), 
-        abs(result["solution"]["branch"][string(i)]["pt"])
-        ) for i in keys(ref[:branch]) if haskey(result["solution"]["branch"], string(i)) 
-    )
-
-    return (load_shed = load_shed, pg = pg, p = p)
 end 

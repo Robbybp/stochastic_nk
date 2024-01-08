@@ -1,13 +1,3 @@
-"""
- * Implements the cutting plane algorithm in the paper
- *
- * Worst-Case Interdiction Analysis of Large-Scale Electric Power Grids 
- * DOI: 10.1109/TPWRS.2008.2004825
-"""
-
-const GRB_ENV = Gurobi.Env()
-
-
 """ run algorithm for stochastic N-k """
 function run_stochastic(config::Dict, mp_file::String, scenario_file::String)
     data = PowerModels.parse_file(mp_file)
