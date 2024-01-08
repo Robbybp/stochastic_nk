@@ -1,9 +1,3 @@
-""" Gurobi solver """
-# lp_optimizer = JuMP.optimizer_with_attributes(
-#     () -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0
-# )
-""" end Gurobi solver """ 
-
 """ Get load shed and power flow solution on interdictable components""" 
 function get_inner_solution(data, ref, generators::Vector, lines::Vector; use_pm::Bool=false)::NamedTuple
     case_data = data
@@ -19,11 +13,8 @@ function get_inner_solution(data, ref, generators::Vector, lines::Vector; use_pm
 
     if use_pm
         lp_optimizer = JuMP.optimizer_with_attributes(
-            () -> HiGHS.Optimizer(), 
-            "presolve" => "on",
-            "output_flag" => false
+            () -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0
         )
-    
         pm = instantiate_model(case, DCPPowerModel, PowerModels._build_mld)
         result = optimize_model!(pm, optimizer = lp_optimizer)
 
@@ -44,15 +35,12 @@ function get_inner_solution(data, ref, generators::Vector, lines::Vector; use_pm
 end 
 
 function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=false)::NamedTuple 
-    loads = original_ref[:load]
     PowerModels.standardize_cost_terms!(case, order=2)
     PowerModels.calc_thermal_limits!(case)
     ref = PowerModels.build_ref(case)[:it][:pm][:nw][0]
     lp_optimizer = JuMP.optimizer_with_attributes(
-            () -> HiGHS.Optimizer(), 
-            "presolve" => "on",
-            "output_flag" => false
-        )
+        () -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0
+    )
     model = Model(lp_optimizer)
     
     @variable(model, va[i in keys(ref[:bus])])
@@ -142,10 +130,11 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
         @constraint(model, va_fr - va_to >= branch["angmin"], base_name="c_l_phase_diff_min_constr($i)")
     end
     optimize!(model)
-    
+
     # get the load shed for each individual load based on the solution
     existing_loads = ref[:load] |> keys 
     x_val = JuMP.value.(variables[:xd])
+    loads = original_ref[:load]
     all_loads = loads |> keys 
     load_shed = Dict(i => 0.0 for i in all_loads)
     isolated_load_shed = 0.0
@@ -158,9 +147,9 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
     end 
     total_load_shed = isolated_load_shed + sum(values(load_shed))
     pg_values = Dict(i => JuMP.value(pg[i]) for i in keys(ref[:gen]))
-    p_values = Dict(l => abs(JuMP.value(p[(l, i, j)])) for (l,i,j) in ref[:arcs_from])
+    p_values = Dict(l => abs(JuMP.value(p[(l, i, j)])) for (l, i, j) in ref[:arcs_from])
 
-    return return (load_shed = total_load_shed, pg = pg_values, p = p_values)
+    return (load_shed = total_load_shed, pg = pg_values, p = p_values)
 end 
 
 

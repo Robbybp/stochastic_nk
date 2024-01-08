@@ -13,7 +13,7 @@ function Base.show(io::IO, solution::SolutionDeterministic)
         maximum([
             length(string(fname)) for fname in fieldnames(SolutionDeterministic)
         ]) + 2
-    printstyled(io, "**************** Solution ****************\n", color=:cyan)
+    printstyled(io, "\n**************** Solution ****************\n", color=:cyan)
     for name in fieldnames(SolutionDeterministic)
         sname = string(name)
         pname = sname * repeat(" ", longest_field_name - length(sname))
