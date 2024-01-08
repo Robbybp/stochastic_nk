@@ -63,16 +63,6 @@ function parse_commandline()
         help = "limits the total number of scenarios used from scenario file"
         arg_type = Int
         default = 50
-
-        "--parallelize", "-x"
-        help = "parallelize subproblem solves y/n"
-        arg_type = String
-        default = "n"
-
-        "--workers", "-w"
-        help = "number of workers"
-        arg_type = Int
-        default = 0
     end
 
     return parse_args(s)

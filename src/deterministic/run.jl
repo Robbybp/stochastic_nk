@@ -6,7 +6,7 @@
 """
 
 """ run algorithm for determinsitic N-k """
-function run_deterministic(config::Dict, mp_file::String)
+function run_deterministic(config::Dict, mp_file::String)::Results
     data = PowerModels.parse_file(mp_file; validate=false)
     PowerModels.make_per_unit!(data)
     add_total_load_info(data)
@@ -16,7 +16,7 @@ function run_deterministic(config::Dict, mp_file::String)
 end 
 
 """ solve with lazy constraint callback """
-function solve_deterministic(config::Dict, data::Dict, ref::Dict)
+function solve_deterministic(config::Dict, data::Dict, ref::Dict)::Results
     model = direct_model(Gurobi.Optimizer(GRB_ENV))
     # set_attribute(model, "LogToConsole", 0)
     set_attribute(model, "TimeLimit", config["timeout"])
@@ -64,9 +64,9 @@ function solve_deterministic(config::Dict, data::Dict, ref::Dict)
     current_x_gen = Dict(i => JuMP.value(x_gen[i]) for i in keys(ref[:gen]))
     current_lines = filter!(z -> last(z) > TOL, current_x_line) |> keys |> collect
     current_gens = filter!(z -> last(z) > TOL, current_x_gen) |> keys |> collect
-    incumbent = SolutionDeterministic(current_lines, current_gens, objective_value, Dict())
+    incumbent = Solution(current_lines, current_gens, objective_value, Dict())
 
-    return ResultsDeterministic(
+    return Results(
         iterations, objective_value, bound, run_time, rel_gap, incumbent
     )
 end 

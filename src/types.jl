@@ -1,20 +1,20 @@
 """ data class that holds a solution to the problem """ 
-struct SolutionDeterministic 
+struct Solution
     lines::Vector{Int}
     generators::Vector{Int}
     load_shed::Float64 
     stats::Dict{Symbol,Any}
 end 
 
-SolutionDeterministic() = SolutionDeterministic([], [], NaN, Dict())
+Solution() = Solution([], [], NaN, Dict())
 
-function Base.show(io::IO, solution::SolutionDeterministic)
+function Base.show(io::IO, solution::Solution)
     longest_field_name =
         maximum([
-            length(string(fname)) for fname in fieldnames(SolutionDeterministic)
+            length(string(fname)) for fname in fieldnames(Solution)
         ]) + 2
     printstyled(io, "\n**************** Solution ****************\n", color=:cyan)
-    for name in fieldnames(SolutionDeterministic)
+    for name in fieldnames(Solution)
         sname = string(name)
         pname = sname * repeat(" ", longest_field_name - length(sname))
         if getfield(solution, name) === nothing
@@ -26,14 +26,14 @@ function Base.show(io::IO, solution::SolutionDeterministic)
     printstyled(io, "*****************************************\n", color=:cyan)
 end 
 
-""" data class that holds the results for the deterministic problem """ 
-struct ResultsDeterministic
+""" data class that holds the results """ 
+struct Results
     num_iterations::Int 
     objective_value::Float64
     bound::Float64 
     run_time_in_seconds::Float64 
     optimality_gap::Float64 
-    solution::SolutionDeterministic
+    solution::Solution
 end 
 
-ResultsDeterministic() = ResultsDeterministic(0, NaN, NaN, NaN, NaN, SolutionDeterministic())
+Results() = Results(0, NaN, NaN, NaN, NaN, Solution())
