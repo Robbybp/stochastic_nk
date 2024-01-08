@@ -7,7 +7,7 @@ function parse_commandline()
         "--case", "-c"
         help = "case file"
         arg_type = String
-        default = "pglib_opf_case14_ieee.m"
+        default = "pglib_opf_case240_pserc.m"
 
         "--data_path", "-p"
         help = "data directory path"
@@ -22,7 +22,7 @@ function parse_commandline()
         "--problem", "-a"
         help = "problem selection - deterministic/stochastic"
         arg_type = String
-        default = "deterministic"
+        default = "stochastic"
 
         "--timeout", "-t"
         help = "time limit for the run in seconds"
@@ -34,30 +34,14 @@ function parse_commandline()
         arg_type = Float64
         default = 1e-2
 
-        "--use_iterative"
-        help = "flag to use the iterative solver"
-        action = :store_true
-
-        # the following options are valid only if the problem type is stochastic
-        "--batch_id", "-b"
-        help = "batch id for running the (id) batch"
-        arg_type = Int
-        default = 1
-
-        "--num_batches", "-n"
-        help = "total number of batches (num_batches should divide the total number of scenarios exactly)"
-        arg_type = Int
-        default = 10
-
-        "--interdictable_components", "-i"
-        help = "interdict lines or (lines and generators) (l/lg)"
-        arg_type = String
-        default = "l"
-
         "--budget", "-k"
         help = "budget for interdiction"
         arg_type = Int
         default = 2
+
+        "--use_separate_budgets" 
+        help = "use separate line and generator budgets" 
+        action = :store_true 
 
         "--line_budget", "-l"
         help = "budget for lines"
@@ -68,6 +52,17 @@ function parse_commandline()
         help = "budget for generators"
         arg_type = Int 
         default = 0
+
+        # the following options are valid only if the problem type is stochastic
+        "--scenario_file", "-s"
+        help = "scenario file"
+        arg_type = String
+        default = "pglib_opf_case240_pserc_1.json"
+
+        "--maximum_scenarios", "-m"
+        help = "limits the total number of scenarios used from scenario file"
+        arg_type = Int
+        default = 50
 
         "--parallelize", "-x"
         help = "parallelize subproblem solves y/n"
@@ -91,13 +86,15 @@ function validate_parameters(params)
         @error "$case_file does not exist, quitting."
         exit() 
     end  
-    budget_consistency = params["budget"] == params["generator_budget"] + params["line_budget"] 
-    if budget_consistency == false 
-        k = params["budget"] 
-        g = params["generator_budget"] 
-        l = params["line_budget"] 
-        @error "line budget ($l) + generator budget ($g) does not equal the budget ($k), quitting."
-        exit()
+    if (params["use_separate_budgets"])
+        budget_consistency = params["budget"] == params["generator_budget"] + params["line_budget"] 
+        if budget_consistency == false 
+            k = params["budget"] 
+            g = params["generator_budget"] 
+            l = params["line_budget"] 
+            @error "line budget ($l) + generator budget ($g) does not equal the budget ($k), quitting."
+            exit()
+        end 
     end 
     # TODO: check for scenario and batch size consistency later for the stochastic interdiction
 end 
@@ -109,12 +106,7 @@ function get_filenames_with_paths(params)
     if params["problem"] == "deterministic"
         scenario_file = nothing
     else 
-        scenario_file = params["data_path"] * "scenario_data/" * case_name * ".tar.gz"
-        @info scenario_file
-        if isfile(scenario_file) == false 
-            @error "$scenario_file does not exist, quitting."
-            exit()
-        end 
+        scenario_file = params["data_path"] * "scenario_data/" * params["scenario_file"]
     end 
     return (mp_file = matpower_file, scenario_file = scenario_file)
 end 
