@@ -30,4 +30,4 @@ data/scenario_data/*.json
 src/output/*.*
 .vscode/*
 *.DS_Store
-
+scratch/*

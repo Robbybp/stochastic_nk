@@ -119,7 +119,7 @@ function get_filenames_with_paths(params)
     if params["problem"] == "deterministic"
         scenario_file = nothing
     else 
-        scenario_file = params["data_path"] * "scenario_data/" * params["scenarios"]
+        scenario_file = params["data_path"] * "scenario_data/" * params["scenario_file"]
     end 
     return (mp_file = matpower_file, scenario_file = scenario_file)
 end 
