@@ -1,3 +1,8 @@
+""" Get load shed and power flow solution in interdictable components (given scenario) """ 
+function get_inner_solution(data, ref, generators::Vector, lines::Vector, scenario_generators::Vector, scenario_lines::Vector; use_pm=false)::NamedTuple
+    return get_inner_solution(data, ref, unique([generators..., scenario_generators...]), unique([lines..., scenario_lines...]); use_pm=use_pm)
+end 
+
 """ Get load shed and power flow solution on interdictable components""" 
 function get_inner_solution(data, ref, generators::Vector, lines::Vector; use_pm::Bool=false)::NamedTuple
     case_data = data

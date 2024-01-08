@@ -56,10 +56,10 @@ function run(config, files)
     end
     # TODO: need to implement 
     
-    # if config["problem"] == "stochastic"
-    #     results = run_stochastic(config, mp_file, scenario_file) 
-    #     # write_results(config, results)
-    # end
+    if config["problem"] == "stochastic"
+        results = run_stochastic(config, mp_file, scenario_file) 
+        # write_results(config, results)
+    end
 end 
 
 main()
