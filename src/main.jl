@@ -59,7 +59,7 @@ function run(config, files)
     end
 end 
 
-function write_results(config::Dict, results::Results)
+function get_config_data_dict(config::Dict)
     config_data = Dict(
         "case" => config["case"],
         "problem" => config["problem"],
@@ -80,8 +80,11 @@ function write_results(config::Dict, results::Results)
         config_data["scenario_data"] = ""
         config_data["num_scenarios"] = NaN
     end 
+    return config_data
+end   
 
-    run_data = Dict(
+function get_run_data_dict(results::Results)
+    return Dict(
         "time_ended" => string(now()), 
         "objective" => round(results.objective_value; digits=4), 
         "bound" => round(results.bound; digits=4), 
@@ -90,10 +93,14 @@ function write_results(config::Dict, results::Results)
         "lines" => results.solution.lines, 
         "generators" => results.solution.generators
     )
+end 
+
+function write_results(config::Dict, results::Results)
+    config_data = get_config_data_dict(config)
+    run_data = get_run_data_dict(results)
 
     to_write = Dict("instance_data" => config_data, "results" => run_data)
     file = config["output_path"] * string(uuid1()) * ".json"
-
     open(file, "w") do f 
         JSON.print(f, to_write, 2)
     end 
