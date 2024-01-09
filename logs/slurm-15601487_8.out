@@ -1,0 +1,83 @@
+get line: sed -n '8 p' det-RTS-GMLC-runs.sh
+command: julia --project=. src/main.jl -c RTS_GMLC.m -k 8 -a deterministic  
+run command: julia --project=. src/main.jl -c RTS_GMLC.m -k 8 -a deterministic  
+output: julia --project=. src/main.jl -c RTS_GMLC.m -k 8 -a deterministic  
+Set parameter TokenServer to value "infrateam.lanl.gov"
+[info | PowerModels]: Suppressing information and warning messages for the rest of this session.  Use the Memento package for more fine-grained control of logging.
+Set parameter TimeLimit to value 86400
+Set parameter LazyConstraints to value 1
+Gurobi Optimizer version 10.0.0 build v10.0.0rc2 (linux64)
+
+CPU model: Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz, instruction set [SSE2|AVX|AVX2]
+Thread count: 36 physical cores, 72 logical processors, using up to 32 threads
+
+Optimize a model with 1 rows, 217 columns and 216 nonzeros
+Model fingerprint: 0x16932b76
+Variable types: 1 continuous, 216 integer (216 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e-06, 1e+06]
+  RHS range        [8e+00, 8e+00]
+Presolve time: 0.00s
+Presolved: 1 rows, 217 columns, 216 nonzeros
+Variable types: 1 continuous, 216 integer (216 binary)
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0    1.3521812e+02   3.981671e+01   0.000000e+00      8s
+       2    3.3499024e+01   0.000000e+00   0.000000e+00      8s
+
+Root relaxation: objective 3.349902e+01, 2 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   33.49902    0    -          -   33.49902      -     -    7s
+     0     0   33.40946    0    2          -   33.40946      -     -    7s
+H    0     0                      16.9900000   33.40946  96.6%     -    7s
+H    0     0                      23.4900000   33.40946  42.2%     -    7s
+     0     0   31.58232    0    9   23.49000   31.58232  34.5%     -    8s
+     0     0   29.94754    0   10   23.49000   29.94754  27.5%     -    8s
+     0     0   29.65897    0   13   23.49000   29.65897  26.3%     -    8s
+     0     0   29.64130    0   13   23.49000   29.64130  26.2%     -    8s
+     0     0   29.63192    0   14   23.49000   29.63192  26.1%     -    8s
+     0     2   29.44870    0   16   23.49000   29.44870  25.4%     -    8s
+*  407   438              11      23.5400000   29.14349  23.8%   4.7    9s
+  1287  1259   23.74341   38    4   23.54000   29.13580  23.8%   3.9   10s
+* 2893  2302              14      23.5900000   28.79848  22.1%   4.1   11s
+  3348  2418   27.03410   18   13   23.59000   27.42425  16.3%   4.5   15s
+ 12306  4783   23.99789   28    8   23.59000   25.91806  9.87%   5.3   20s
+ 22317  7352   24.20048   27    8   23.59000   25.30608  7.27%   5.8   25s
+
+Cutting planes:
+  Gomory: 8
+  MIR: 30
+  Flow cover: 12
+  Lazy constraints: 277
+
+Explored 62513 nodes (397488 simplex iterations) in 29.67 seconds (6.07 work units)
+Thread count was 32 (of 72 available processors)
+
+Solution count 4: 23.59 23.54 23.49 16.99 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 2.359000000000e+01, best bound 2.359000000000e+01, gap 0.0000%
+
+User-callback calls 128965, time in user-callback 20.02 sec
+                                 CLI parameters
+┌──────────────────────┬───────────────────────────────────────────────────────┐
+│    maximum_scenarios │                                                    50 │
+│        scenario_file │                        pglib_opf_case240_pserc_1.json │
+│ use_separate_budgets │                                                 false │
+│          output_path │ /vast/home/kaarthik/in-progress/stochastic_nk/output/ │
+│          line_budget │                                                     2 │
+│       optimality_gap │                                                  0.01 │
+│                 case │                                            RTS_GMLC.m │
+│            data_path │   /vast/home/kaarthik/in-progress/stochastic_nk/data/ │
+│               budget │                                                     8 │
+│              timeout │                                                 86400 │
+│              problem │                                         deterministic │
+│     generator_budget │                                                     0 │
+└──────────────────────┴───────────────────────────────────────────────────────┘

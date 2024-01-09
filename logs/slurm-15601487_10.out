@@ -1,0 +1,79 @@
+get line: sed -n '10 p' det-RTS-GMLC-runs.sh
+command: julia --project=. src/main.jl -c RTS_GMLC.m -k 10 -a deterministic  
+run command: julia --project=. src/main.jl -c RTS_GMLC.m -k 10 -a deterministic  
+output: julia --project=. src/main.jl -c RTS_GMLC.m -k 10 -a deterministic  
+Set parameter TokenServer to value "infrateam.lanl.gov"
+[info | PowerModels]: Suppressing information and warning messages for the rest of this session.  Use the Memento package for more fine-grained control of logging.
+Set parameter TimeLimit to value 86400
+Set parameter LazyConstraints to value 1
+Gurobi Optimizer version 10.0.0 build v10.0.0rc2 (linux64)
+
+CPU model: Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz, instruction set [SSE2|AVX|AVX2]
+Thread count: 36 physical cores, 72 logical processors, using up to 32 threads
+
+Optimize a model with 1 rows, 217 columns and 216 nonzeros
+Model fingerprint: 0xdfd4aa49
+Variable types: 1 continuous, 216 integer (216 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e-06, 1e+06]
+  RHS range        [1e+01, 1e+01]
+Presolve time: 0.00s
+Presolved: 1 rows, 217 columns, 216 nonzeros
+Variable types: 1 continuous, 216 integer (216 binary)
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0    1.3481226e+02   4.165599e+01   0.000000e+00      8s
+       2    4.1005396e+01   0.000000e+00   0.000000e+00      8s
+
+Root relaxation: objective 4.100540e+01, 2 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   41.00540    0    -          -   41.00540      -     -    8s
+     0     0   39.97639    0    2          -   39.97639      -     -    8s
+H    0     0                      16.9400000   39.97639   136%     -    8s
+H    0     0                      19.9400000   39.97639   100%     -    8s
+     0     0   37.55167    0    7   19.94000   37.55167  88.3%     -    8s
+     0     0   36.30342    0    9   19.94000   36.30342  82.1%     -    8s
+     0     0   35.47127    0   11   19.94000   35.47127  77.9%     -    8s
+H    0     0                      27.0900000   35.47127  30.9%     -    8s
+     0     0   35.43426    0   13   27.09000   35.43426  30.8%     -    8s
+     0     0   35.43426    0   12   27.09000   35.43426  30.8%     -    8s
+     0     2   35.27361    0   12   27.09000   35.27361  30.2%     -    9s
+* 1121  1112              17      30.6900000   34.94315  13.9%   4.3   10s
+  8929  3479   32.25114   24   11   30.69000   32.84645  7.03%   5.7   15s
+
+Cutting planes:
+  Gomory: 4
+  MIR: 1
+  Lazy constraints: 53
+
+Explored 33978 nodes (223266 simplex iterations) in 17.33 seconds (2.53 work units)
+Thread count was 32 (of 72 available processors)
+
+Solution count 4: 30.69 27.09 19.94 16.94 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 3.069000000000e+01, best bound 3.069000000000e+01, gap 0.0000%
+
+User-callback calls 70469, time in user-callback 12.84 sec
+                                 CLI parameters
+┌──────────────────────┬───────────────────────────────────────────────────────┐
+│    maximum_scenarios │                                                    50 │
+│        scenario_file │                        pglib_opf_case240_pserc_1.json │
+│ use_separate_budgets │                                                 false │
+│          output_path │ /vast/home/kaarthik/in-progress/stochastic_nk/output/ │
+│          line_budget │                                                     2 │
+│       optimality_gap │                                                  0.01 │
+│                 case │                                            RTS_GMLC.m │
+│            data_path │   /vast/home/kaarthik/in-progress/stochastic_nk/data/ │
+│               budget │                                                    10 │
+│              timeout │                                                 86400 │
+│              problem │                                         deterministic │
+│     generator_budget │                                                     0 │
+└──────────────────────┴───────────────────────────────────────────────────────┘

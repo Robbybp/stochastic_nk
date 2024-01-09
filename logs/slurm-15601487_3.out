@@ -1,0 +1,73 @@
+get line: sed -n '3 p' det-RTS-GMLC-runs.sh
+command: julia --project=. src/main.jl -c RTS_GMLC.m -k 3 -a deterministic  
+run command: julia --project=. src/main.jl -c RTS_GMLC.m -k 3 -a deterministic  
+output: julia --project=. src/main.jl -c RTS_GMLC.m -k 3 -a deterministic  
+Set parameter TokenServer to value "infrateam.lanl.gov"
+[info | PowerModels]: Suppressing information and warning messages for the rest of this session.  Use the Memento package for more fine-grained control of logging.
+Set parameter TimeLimit to value 86400
+Set parameter LazyConstraints to value 1
+Gurobi Optimizer version 10.0.0 build v10.0.0rc2 (linux64)
+
+CPU model: Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz, instruction set [SSE2|AVX|AVX2]
+Thread count: 36 physical cores, 72 logical processors, using up to 32 threads
+
+Optimize a model with 1 rows, 217 columns and 216 nonzeros
+Model fingerprint: 0xb25cfa8f
+Variable types: 1 continuous, 216 integer (216 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e-06, 1e+06]
+  RHS range        [3e+00, 3e+00]
+Presolve time: 0.00s
+Presolved: 1 rows, 217 columns, 216 nonzeros
+Variable types: 1 continuous, 216 integer (216 binary)
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0    1.3557307e+02   3.633743e+01   0.000000e+00      8s
+       2    1.1100000e+01   0.000000e+00   0.000000e+00      8s
+
+Root relaxation: objective 1.110000e+01, 2 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   11.10000    0    -          -   11.10000      -     -    8s
+     0     0   11.10000    0    2          -   11.10000      -     -    8s
+H    0     0                       2.8400000   11.10000   291%     -    8s
+H    0     0                       5.8400000   11.10000  90.1%     -    8s
+     0     0   10.96950    0    6    5.84000   10.96950  87.8%     -    8s
+     0     0   10.96542    0    8    5.84000   10.96542  87.8%     -    9s
+     0     2   10.96542    0    8    5.84000   10.96542  87.8%     -    9s
+*  295    99              11       6.2600000   10.18945  62.8%   2.9   11s
+
+Cutting planes:
+  MIR: 1
+  Lazy constraints: 181
+
+Explored 1802 nodes (5366 simplex iterations) in 14.49 seconds (0.38 work units)
+Thread count was 32 (of 72 available processors)
+
+Solution count 3: 6.26 5.84 2.84 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.260000000000e+00, best bound 6.260000000000e+00, gap 0.0000%
+
+User-callback calls 4286, time in user-callback 13.74 sec
+                                 CLI parameters
+┌──────────────────────┬───────────────────────────────────────────────────────┐
+│    maximum_scenarios │                                                    50 │
+│        scenario_file │                        pglib_opf_case240_pserc_1.json │
+│ use_separate_budgets │                                                 false │
+│          output_path │ /vast/home/kaarthik/in-progress/stochastic_nk/output/ │
+│          line_budget │                                                     2 │
+│       optimality_gap │                                                  0.01 │
+│                 case │                                            RTS_GMLC.m │
+│            data_path │   /vast/home/kaarthik/in-progress/stochastic_nk/data/ │
+│               budget │                                                     3 │
+│              timeout │                                                 86400 │
+│              problem │                                         deterministic │
+│     generator_budget │                                                     0 │
+└──────────────────────┴───────────────────────────────────────────────────────┘
