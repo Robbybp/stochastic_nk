@@ -100,7 +100,7 @@ function write_results(config::Dict, results::Results)
     run_data = get_run_data_dict(results)
 
     to_write = Dict("instance_data" => config_data, "results" => run_data)
-    file = config["output_path"] * string(uuid1()) * ".json"
+    file = config["output_path"] * config_data["problem"] * "/" * string(uuid1()) * ".json"
     open(file, "w") do f 
         JSON.print(f, to_write, 2)
     end 
