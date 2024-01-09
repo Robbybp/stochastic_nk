@@ -1,0 +1,23 @@
+{
+  "instance_data": {
+    "separate_budgets": false,
+    "num_scenarios": null,
+    "scenario_data": "",
+    "case": "RTS_GMLC.m",
+    "problem": "deterministic",
+    "generator_budget": null,
+    "budget": 1,
+    "line_budget": null
+  },
+  "results": {
+    "time_ended": "2024-01-09T13:31:53.663",
+    "generators": [],
+    "objective": 0.15,
+    "lines": [
+      90
+    ],
+    "run_time": 13.01,
+    "bound": 0.15,
+    "relative_gap": 0.0
+  }
+}

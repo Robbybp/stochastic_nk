@@ -53,6 +53,11 @@ function parse_commandline()
         arg_type = Int 
         default = 0
 
+        "--inner_solver"
+        help = "cplex/gurobi"
+        arg_type = String 
+        default = "cplex"
+
         # the following options are valid only if the problem type is stochastic
         "--scenario_file", "-s"
         help = "scenario file"

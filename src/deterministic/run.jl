@@ -46,7 +46,7 @@ function solve_deterministic(config::Dict, data::Dict, ref::Dict)::Results
         current_x_gen = Dict(i => JuMP.callback_value(cb_data, x_gen[i]) for i in keys(ref[:gen]))
         current_lines = filter!(z -> last(z) > TOL, current_x_line) |> keys |> collect
         current_gens = filter!(z -> last(z) > TOL, current_x_gen) |> keys |> collect
-        cut_info = get_inner_solution(data, ref, current_gens, current_lines)
+        cut_info = get_inner_solution(data, ref, current_gens, current_lines; solver=config["inner_solver"])
         woods_cut = @build_constraint(eta <= cut_info.load_shed + sum([cut_info.pg[i] * x_gen[i] for i in keys(cut_info.pg)]) + 
             sum([cut_info.p[i] * x_line[i] for i in keys(cut_info.p)]))
         MOI.submit(model, MOI.LazyConstraint(cb_data), woods_cut)

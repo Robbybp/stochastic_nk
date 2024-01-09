@@ -8,6 +8,7 @@ using Logging
 using UUIDs
 
 const GRB_ENV = Gurobi.Env()
+using CPLEX
 
 PowerModels.silence()
 

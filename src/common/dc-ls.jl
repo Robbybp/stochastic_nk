@@ -1,10 +1,10 @@
 """ Get load shed and power flow solution in interdictable components (given scenario) """ 
-function get_inner_solution(data, ref, generators::Vector, lines::Vector, scenario_generators::Vector, scenario_lines::Vector; use_pm=false)::NamedTuple
-    return get_inner_solution(data, ref, unique([generators..., scenario_generators...]), unique([lines..., scenario_lines...]); use_pm=use_pm)
+function get_inner_solution(data, ref, generators::Vector, lines::Vector, scenario_generators::Vector, scenario_lines::Vector; use_pm=false, solver="cplex")::NamedTuple
+    return get_inner_solution(data, ref, unique([generators..., scenario_generators...]), unique([lines..., scenario_lines...]); use_pm=use_pm, solver=solver)
 end 
 
 """ Get load shed and power flow solution on interdictable components""" 
-function get_inner_solution(data, ref, generators::Vector, lines::Vector; use_pm::Bool=false)::NamedTuple
+function get_inner_solution(data, ref, generators::Vector, lines::Vector; use_pm::Bool=false, solver="cplex")::NamedTuple
     case_data = data
     # deepcopy and turn-off interdicted components 
     case = deepcopy(case_data)
@@ -17,9 +17,11 @@ function get_inner_solution(data, ref, generators::Vector, lines::Vector; use_pm
     PowerModels.propagate_topology_status!(case)
 
     if use_pm
-        lp_optimizer = JuMP.optimizer_with_attributes(
-            () -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0
-        )
+        lp_optimizer = if solver == "cplex"
+            JuMP.optimizer_with_attributes(() -> CPLEX.Optimizer(), "CPX_PARAM_SCRIND" => 0)
+        else JuMP.optimizer_with_attributes(() -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0)
+        end 
+        
         pm = instantiate_model(case, DCPPowerModel, PowerModels._build_mld)
         result = optimize_model!(pm, optimizer = lp_optimizer)
 
