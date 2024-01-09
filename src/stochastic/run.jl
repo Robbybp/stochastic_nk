@@ -54,7 +54,7 @@ function solve_stochastic(config::Dict, data::Dict, ref::Dict, scenarios::Dict):
         Threads.@threads for val in collect(scenarios)
             s = first(val)
             scenario = last(val)
-            cut_info = get_inner_solution(data, ref, current_gens, current_lines, scenario["gen"], scenario["branch"])
+            cut_info = get_inner_solution(data, ref, current_gens, current_lines, scenario["gen"], scenario["branch"]; solver=config["inner_solver"])
             woods_cut = @build_constraint(eta[s] <= cut_info.load_shed + sum([cut_info.pg[i] * x_gen[i] for i in keys(cut_info.pg)]) + 
                 sum([cut_info.p[i] * x_line[i] for i in keys(cut_info.p)]))
             Threads.lock(lck) do 
