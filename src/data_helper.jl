@@ -16,5 +16,7 @@ end
 
 """ add total load to case_data """ 
 function add_total_load_info(case_data::Dict)
-    case_data["total_load"] = [load["pd"] for (_, load) in case_data["load"]] |> sum
+    pd = sum([load["pd"] for (_, load) in case_data["load"]]; init=0.0)
+    ps = sum([shunt["gs"] for (_, shunt) in case_data["shunt"]]; init=0.0)
+    case_data["total_load"] = pd + ps
 end 

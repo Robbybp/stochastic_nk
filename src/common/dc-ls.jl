@@ -64,11 +64,13 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
     p_expr = Dict([((l,i,j), 1.0*p[(l,i,j)]) for (l,i,j) in ref[:arcs_from]])
     p_expr = merge(p_expr, Dict([((l,j,i), -1.0*p[(l,i,j)]) for (l,i,j) in ref[:arcs_from]]))
     @variable(model, 0 <= xd[i in keys(ref[:load])] <= 1)
+    @variable(model, 0 <= xs[i in keys(ref[:shunt])] <= 1)
     variables = Dict{Symbol,Any}(
         :va => va, 
         :pg => pg,
         :p => p,
-        :xd => xd
+        :xd => xd, 
+        :xs => xs
     ) 
     if (add_dc_lines_model)
         @variable(model, p_dc[a in ref[:arcs_dc]])
@@ -93,7 +95,10 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
         end
     end 
 
-    @objective(model, Min, sum((1 - xd[i]) * load["pd"] for (i, load) in ref[:load]))
+    @objective(model, Min, 
+        sum((1 - xd[i]) * load["pd"] for (i, load) in ref[:load]) +
+        sum((1 - xs[i]) * shunt["gs"] for (i, shunt) in ref[:shunt]; init=0.0)
+    )
     
     for (i, _) in ref[:ref_buses]
         @constraint(model, va[i] == 0)
@@ -111,7 +116,7 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
                 sum(p_dc[a_dc] for a_dc in ref[:bus_arcs_dc][i]) ==     
                 sum(pg[g] for g in ref[:bus_gens][i]) -                 
                 sum(xd[load["index"]] * load["pd"] for load in bus_loads) -                 
-                sum(shunt["gs"] for shunt in bus_shunts)*1.0^2
+                sum(xs[shunt["index"]] * shunt["gs"] for shunt in bus_shunts)*1.0^2
             )
             continue 
         end 
@@ -140,23 +145,37 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
 
     # get the load shed for each individual load based on the solution
     existing_loads = ref[:load] |> keys 
-    x_val = JuMP.value.(variables[:xd])
+    existing_shunts = ref[:shunt] |> keys
+    xd_val = JuMP.value.(variables[:xd])
+    xs_val = JuMP.value.(variables[:xs])
     loads = original_ref[:load]
+    shunts = original_ref[:shunt]
     all_loads = loads |> keys 
+    all_shunts = shunts |> keys
     load_shed = Dict(i => 0.0 for i in all_loads)
+    shunt_shed = Dict(i => 0.0 for i in all_shunts)
     isolated_load_shed = 0.0
+    isolated_shunt_shed = 0.0 
     for i in all_loads 
         if !(i in existing_loads)
             isolated_load_shed +=  loads[i]["pd"]
             continue 
         end 
-        load_shed[i] = (1-x_val[i]) * loads[i]["pd"]
+        load_shed[i] = (1-xd_val[i]) * loads[i]["pd"]
     end 
-    total_load_shed = isolated_load_shed + sum(values(load_shed))
+    for i in all_shunts 
+        if !(i in existing_shunts)
+            isolated_shunt_shed +=  shunts[i]["pd"]
+            continue 
+        end 
+        shunt_shed[i] = (1-xs_val[i]) * shunts[i]["gs"]
+    end 
+    total_pd = isolated_load_shed + sum(values(load_shed); init=0.0)
+    total_gs = isolated_shunt_shed + sum(values(shunt_shed); init=0.0)
     pg_values = Dict(i => JuMP.value(pg[i]) for i in keys(ref[:gen]))
     p_values = Dict(l => abs(JuMP.value(p[(l, i, j)])) for (l, i, j) in ref[:arcs_from])
 
-    return (load_shed = total_load_shed, pg = pg_values, p = p_values)
+    return (load_shed = total_pd + total_gs, pg = pg_values, p = p_values)
 end 
 
 
