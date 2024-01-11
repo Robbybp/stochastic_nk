@@ -62,18 +62,18 @@ function parse_commandline()
 end
 
 function main()
-    config = parse_commandline()
+    cliargs = parse_commandline()
     
     # print the input parameters 
-    pretty_table(config, 
+    pretty_table(cliargs, 
         title = "CLI parameters", 
         title_alignment = :c, 
         title_same_width_as_table = true, 
         show_header = false)
 
-    validate_parameters(config)
-    files = get_filenames_with_paths(config)
-    run(config, files)
+    validate_parameters(cliargs)
+    files = get_filenames_with_paths(cliargs)
+    run(cliargs, files)
     return 
 end 
 
@@ -100,27 +100,27 @@ function get_filenames_with_paths(params)
         zip_file = zip_file)
 end 
 
-function run(config, files)
+function run(cliargs, files)
     mp_file = files.mp_file 
     scenario_file = files.scenario_file 
     cluster_file = files.cluster_file
     zip_file = files.zip_file
     (isfile(scenario_file)) && (@warn "$scenario_file exists, overwriting")
-    (config["use_clusters"] && !isfile(cluster_file)) && (@error "$cluster_file does not exists, quitting"; exit())
+    (cliargs["use_clusters"] && !isfile(cluster_file)) && (@error "$cluster_file does not exists, quitting"; exit())
 
     data = PMs.parse_file(mp_file)
     ref = PMs.build_ref(data)[:it][:pm][:nw][0]
     @info "number of buses: $(length(ref[:bus]))"
     Random.seed!(0)
 
-    if config["use_clusters"] == false
+    if cliargs["use_clusters"] == false
         line_ids = ref[:branch] |> keys 
         gen_ids = ref[:gen] |> keys
         components = ["line", "gen"]
 
-        num_outages = config["num_max_outages"]
+        num_outages = cliargs["num_max_outages"]
         scenarios = Dict()
-        for i in 1:config["num_scenarios"]
+        for i in 1:cliargs["num_scenarios"]
             scenarios[i] = Dict("branch" => [] , "gen" => []) 
             for _ in 1:num_outages 
                 component = rand(components)
@@ -154,10 +154,10 @@ function run(config, files)
             gen_ids = filter(x -> last(x)["gen_bus"] in buses, ref[:gen]) |> keys 
             line_ids = filter(x -> last(x)["f_bus"] in buses && last(x)["t_bus"] in buses, ref[:branch]) |> keys
             components = ["line", "gen"]
-            num_outages = range(config["num_min_outages"], config["num_max_outages"])
+            num_outages = range(cliargs["num_min_outages"], cliargs["num_max_outages"])
             
             scenarios = Dict() 
-            for i in 1:config["num_scenarios"]
+            for i in 1:cliargs["num_scenarios"]
                 scenarios[i] = Dict("branch" => [] , "gen" => []) 
                 k = rand(num_outages)
                 for _ in 1:k

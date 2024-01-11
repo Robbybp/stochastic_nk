@@ -1,10 +1,9 @@
 #!/bin/bash
-rerun = 0 
+rerun=0 
 
 for s in `seq 1 1 10`
 do 
-    if [ $rerun -eq 0 ]
-    then
+    if [ $rerun == 0 ]; then
         sbatch --job-name=rts_gmlc_det_$s --output=./logs/rts_gmlc_det_$s.txt ./runscript.sh --case RTS_GMLC.m --budget $s --problem deterministic 
     else 
         sbatch --job-name=rts_gmlc_det_$s --output=./logs/rts_gmlc_det_$s.txt ./runscript.sh --case RTS_GMLC.m --budget $s --problem deterministic --rerun
@@ -15,8 +14,7 @@ for m in `seq 50 50 200`
 do
     for k in `seq 1 1 10`
         do 
-            if [ $rerun -eq 0 ]
-            then
+            if [ $rerun == 0 ]; then
                 sbatch --job-name=rts_gmlc_stoch_$k_$m --output=./logs/rts_gmlc_det_$k_$m.txt ./runscript.sh -c RTS_GMLC.m -k $k -s RTS_GMLC_1.json -m $m
             else
                 sbatch --job-name=rts_gmlc_stoch_$k_$m --output=./logs/rts_gmlc_det_$k_$m.txt ./runscript.sh -c RTS_GMLC.m -k $k -s RTS_GMLC_1.json -m $m --rerun 

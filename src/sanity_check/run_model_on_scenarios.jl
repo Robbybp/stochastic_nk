@@ -68,21 +68,21 @@ function get_filenames_with_paths(params)
 end 
 
 function main()
-    config = parse_commandline()
+    cliargs = parse_commandline()
     # print the input parameters 
-    pretty_table(config, 
+    pretty_table(cliargs, 
         title = "CLI parameters", 
         title_alignment = :c, 
         title_same_width_as_table = true, 
         show_header = false)
 
-    validate_parameters(config)
-    files = get_filenames_with_paths(config)
-    run(config, files)
+    validate_parameters(cliargs)
+    files = get_filenames_with_paths(cliargs)
+    run(cliargs, files)
     return 
 end 
 
-function run(config, files)
+function run(cliargs, files)
     @info "starting run"
     mp_file = files.mp_file 
     scenario_file = files.scenario_file
@@ -119,7 +119,7 @@ function run(config, files)
         @debug "load shed = $total_load_shed"
     end 
     
-    output_file = config["output_path"] * "ls_" * config["scenario_file"]
+    output_file = cliargs["output_path"] * "ls_" * cliargs["scenario_file"]
     
     open(output_file, "w") do f
         JSON.print(f, scenario_load_shed, 2)

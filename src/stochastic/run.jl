@@ -1,5 +1,5 @@
 """ run algorithm for stochastic N-k """
-function run_stochastic(config::Dict, mp_file::String, scenario_file::String)::Results
+function run_stochastic(cliargs::Dict, mp_file::String, scenario_file::String)::Results
     data = PowerModels.parse_file(mp_file; validate=false)
     PowerModels.make_per_unit!(data)
     add_total_load_info(data)
@@ -7,22 +7,22 @@ function run_stochastic(config::Dict, mp_file::String, scenario_file::String)::R
 
     scenario_data = JSON.parsefile(scenario_file)
     num_scenarios = length(scenario_data)
-    if (config["maximum_scenarios"] > num_scenarios)
-        @warn "maximum scenarios requested $(config["maximum_scenarios"]) > number of scenarios in scenario file ($num_scenarios)"
+    if (cliargs["maximum_scenarios"] > num_scenarios)
+        @warn "maximum scenarios requested $(cliargs["maximum_scenarios"]) > number of scenarios in scenario file ($num_scenarios)"
         @warn "using $num_scenarios instead"
     end 
-    filter!(p -> parse(Int64, first(p)) <= config["maximum_scenarios"], scenario_data)
+    filter!(p -> parse(Int64, first(p)) <= cliargs["maximum_scenarios"], scenario_data)
 
-    return solve_stochastic(config, data, ref, scenario_data)
+    return solve_stochastic(cliargs, data, ref, scenario_data)
 end 
 
 """ solve with lazy constraint callback """
-function solve_stochastic(config::Dict, data::Dict, ref::Dict, scenarios::Dict)::Results
+function solve_stochastic(cliargs::Dict, data::Dict, ref::Dict, scenarios::Dict)::Results
     num_scenarios = length(scenarios)
     model = direct_model(Gurobi.Optimizer(GRB_ENV))
     # set_attribute(model, "LogToConsole", 0)
-    set_attribute(model, "TimeLimit", config["timeout"])
-    MOI.set(model, MOI.RelativeGapTolerance(), config["optimality_gap"] / 100.0)
+    set_attribute(model, "TimeLimit", cliargs["timeout"])
+    MOI.set(model, MOI.RelativeGapTolerance(), cliargs["optimality_gap"] / 100.0)
 
     # eta represents the min load shed 
     @variable(model, 1E-6 <= eta[j in keys(scenarios)] <= 1E6)
@@ -31,10 +31,10 @@ function solve_stochastic(config::Dict, data::Dict, ref::Dict, scenarios::Dict):
     @variable(model, x_gen[i in keys(ref[:gen])], Bin)
     
     # budget constraints 
-    @constraint(model, sum(x_line) + sum(x_gen) == config["budget"])
-    if config["use_separate_budgets"]
-        @constraint(model, sum(x_line) == config["line_budget"])
-        @constraint(model, sum(x_gen) == config["generator_budget"])
+    @constraint(model, sum(x_line) + sum(x_gen) == cliargs["budget"])
+    if cliargs["use_separate_budgets"]
+        @constraint(model, sum(x_line) == cliargs["line_budget"])
+        @constraint(model, sum(x_gen) == cliargs["generator_budget"])
     end 
 
     # objective (expected load shed's SAA approximation)
@@ -54,7 +54,7 @@ function solve_stochastic(config::Dict, data::Dict, ref::Dict, scenarios::Dict):
         Threads.@threads for val in collect(scenarios)
             s = first(val)
             scenario = last(val)
-            cut_info = get_inner_solution(data, ref, current_gens, current_lines, scenario["gen"], scenario["branch"]; solver=config["inner_solver"])
+            cut_info = get_inner_solution(data, ref, current_gens, current_lines, scenario["gen"], scenario["branch"]; solver=cliargs["inner_solver"])
             woods_cut = @build_constraint(eta[s] <= cut_info.load_shed + sum([cut_info.pg[i] * x_gen[i] for i in keys(cut_info.pg)]) + 
                 sum([cut_info.p[i] * x_line[i] for i in keys(cut_info.p)]))
             Threads.lock(lck) do 
