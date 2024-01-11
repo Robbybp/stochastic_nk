@@ -8,6 +8,6 @@
 #SBATCH --partition=scaling
 #report email setup
 #SBATCH --mail-user kaarthik@lanl.gov
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=FAIL
 
-srun julia --project=. src/main.jl "$@"
+srun julia -t 25 --project=. src/main.jl "$@"

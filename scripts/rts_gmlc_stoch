@@ -1,9 +1,0 @@
-#!/bin/bash
-
-for m in `seq 50 50 200`
-do
-    for k in `seq 2 1 10`
-        do 
-            sbatch --job-name=rts_gmlc_stoch_$k_$m --output=./logs/rts_gmlc_det_$k_$m.txt ./runscript.sh -c RTS_GMLC.m -k $k -s RTS_GMLC_1.json -m $m
-        done
-done
