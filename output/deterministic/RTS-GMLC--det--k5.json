@@ -6,18 +6,23 @@
     "case": "RTS_GMLC.m",
     "problem": "deterministic",
     "generator_budget": null,
-    "budget": 1,
+    "budget": 5,
     "line_budget": null
   },
   "results": {
-    "time_ended": "2024-01-11T11:43:34.909",
-    "generators": [],
-    "objective": 15.0,
-    "lines": [
-      90
+    "time_ended": "2024-01-11T11:46:28.386",
+    "generators": [
+      57
     ],
-    "run_time": 11.94,
-    "bound": 15.0001,
+    "objective": 1381.0,
+    "lines": [
+      86,
+      100,
+      102,
+      101
+    ],
+    "run_time": 32.27,
+    "bound": 1381.0,
     "relative_gap": 0.0
   }
 }
