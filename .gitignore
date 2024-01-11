@@ -27,8 +27,7 @@ Manifest.toml
 # other 
 data/scenario_data/*.txt
 data/scenario_data/*.json
-src/output/deterministic/*.json 
-src/output/stochastic/*.json 
+logs/*
 .vscode/*
 *.DS_Store
 scratch/*

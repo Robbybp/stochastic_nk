@@ -58,6 +58,10 @@ function parse_commandline()
         arg_type = String 
         default = "cplex"
 
+        "--rerun"
+        help = "re-run even if result file already exists"
+        action = :store_true
+
         # the following options are valid only if the problem type is stochastic
         "--scenario_file", "-s"
         help = "scenario file"
