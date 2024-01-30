@@ -10,7 +10,7 @@ PMs.silence()
 function get_expected_load_sheds(file::String, 
     lines::Vector, 
     gens::Vector, 
-    scenarios::Dict)::Dict 
+    scenarios::Dict)::Dict
 
     data = PowerModels.parse_file(file; validate=false)
     PowerModels.make_per_unit!(data)
@@ -52,6 +52,35 @@ function get_expected_load_sheds(file::String,
     end 
 
     return bus_ratio
+end 
+
+""" Get EEV """ 
+function get_EEV(file::String, 
+    lines::Vector, 
+    gens::Vector, 
+    scenarios::Dict)::Float64
+
+    data = PowerModels.parse_file(file; validate=false)
+    PowerModels.make_per_unit!(data)
+    ref = PowerModels.build_ref(data)[:it][:pm][:nw][0]
+    total_load_shed = 0.0 
+    total_shunt_shed = 0.0
+
+    for (_, scenario) in scenarios 
+        bus_shed = Dict{Int,Float64}()
+        scenario_lines = scenario["branch"]
+        scenario_gens = scenario["gen"]
+        off_lines = unique!([scenario_lines..., lines...])
+        off_gens = unique!([scenario_gens..., gens...])
+        load_shed, shunt_shed = get_inner_solution(
+            data, ref, off_gens, off_lines
+        )
+        total_load_shed += sum(values(load_shed))
+        total_shunt_shed += sum(values(shunt_shed))
+    end 
+
+
+    return (total_load_shed + total_shunt_shed)/length(scenarios)
 end 
 
 """ Get load shed and power flow solution on interdictable components""" 
@@ -202,6 +231,7 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
 end 
 
 function main()
+    # expected_ls_factor for visualization
     root_dir = chop(Base.active_project(), tail = length("Project.toml"))
     scenario_file = root_dir * "data/scenario_data/RTS_GMLC_1.json"
     case_file = root_dir * "data/matpower/RTS_GMLC.m"
@@ -218,6 +248,23 @@ function main()
     end 
          
     file = root_dir * "/visualization/data/expected_ls_factor.json" 
+    open(file, "w") do f 
+        JSON.print(f, to_write, 2) 
+    end
+
+    # calculation of EEV
+    result_dir = root_dir * "output/evp/"
+    to_write = Dict()
+    for k in 1:10 
+        result_file = result_dir * "RTS-GMLC--evp--RTS-GMLC-1--k" * string(k) * "--m200.json"
+        results = JSON.parsefile(result_file)["results"]
+        lines = results["lines"]
+        generators = results["generators"]
+        to_write[k] = round(get_EEV(case_file, lines, generators, scenarios) * 100.0;
+            digits=4)
+    end 
+
+    file = root_dir * "/visualization/data/EEV.json" 
     open(file, "w") do f 
         JSON.print(f, to_write, 2) 
     end

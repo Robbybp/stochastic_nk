@@ -13,7 +13,7 @@ function get_config_data(cliargs::Dict)
         config_data["line_budget"] = NaN
         config_data["generator_budget"] = NaN
     end 
-    if cliargs["problem"] == "stochastic"
+    if cliargs["problem"] in ["stochastic", "evp"]
         config_data["scenario_data"] = cliargs["scenario_file"]
         config_data["num_scenarios"] = cliargs["maximum_scenarios"]
     else 

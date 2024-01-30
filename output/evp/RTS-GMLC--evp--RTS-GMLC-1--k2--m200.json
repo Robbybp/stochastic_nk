@@ -1,0 +1,24 @@
+{
+  "instance_data": {
+    "separate_budgets": false,
+    "num_scenarios": 200,
+    "scenario_data": "RTS_GMLC_1.json",
+    "case": "RTS_GMLC.m",
+    "problem": "evp",
+    "generator_budget": null,
+    "budget": 2,
+    "line_budget": null
+  },
+  "results": {
+    "time_ended": "2024-01-30T14:25:12.069",
+    "generators": [
+      39,
+      74
+    ],
+    "objective": 229.0,
+    "lines": [],
+    "run_time": 10.67,
+    "bound": 229.0,
+    "relative_gap": 0.0
+  }
+}

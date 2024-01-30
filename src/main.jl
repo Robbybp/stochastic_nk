@@ -18,6 +18,7 @@ include("data_helper.jl")
 include("common/dc-ls.jl")
 include("deterministic/run.jl")
 include("stochastic/run.jl")
+include("evp/run.jl")
 
 # New ConsoleLogger that prints to stderr and accept messages with level >= Logging.Debug
 debug_logger = ConsoleLogger(stderr, Logging.Debug)
@@ -71,6 +72,12 @@ function run(cliargs, files)
         write_results(cliargs, results)
         return
     end
+
+    if cliargs["problem"] == "evp"
+        results = run_evp(cliargs, mp_file, scenario_file)
+        write_results(cliargs, results)
+        return 
+    end 
 
 end 
 

@@ -20,7 +20,7 @@ function parse_commandline()
         default = chop(Base.active_project(), tail = length("Project.toml")) * "output/"
 
         "--problem", "-a"
-        help = "problem selection - deterministic/stochastic"
+        help = "problem selection - deterministic/stochastic/evp"
         arg_type = String
         default = "stochastic"
 
