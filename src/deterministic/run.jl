@@ -15,6 +15,13 @@ function run_deterministic(cliargs::Dict, mp_file::String)::Results
     return solve_deterministic(cliargs, data, ref)
 end 
 
+""" Method that accepts the PowerModels data dictionary directly """
+function run_deterministic(cliargs::Dict, data::Dict{String,Any})::Results
+    add_total_load_info(data)
+    ref = PowerModels.build_ref(data)[:it][:pm][:nw][0]
+    return solve_deterministic(cliargs, data, ref)
+end
+
 """ solve with lazy constraint callback """
 function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
     model = direct_model(Gurobi.Optimizer(GRB_ENV))
