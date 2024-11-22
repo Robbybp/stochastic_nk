@@ -111,7 +111,17 @@ function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
     current_x_gen = Dict(i => JuMP.value(x_gen[i]) for i in keys(ref[:gen]))
     current_lines = filter!(z -> last(z) > TOL, current_x_line) |> keys |> collect
     current_gens = filter!(z -> last(z) > TOL, current_x_gen) |> keys |> collect
-    incumbent = Solution(current_lines, current_gens, objective_value, Dict())
+
+    if cliargs["interdict_buses"]
+        current_x_bus = Dict(i => JuMP.value(x_bus[i]) for i in keys(ref[:bus]))
+        current_buses = filter!(z -> last(z) > TOL, current_x_bus) |> keys |> collect
+    else
+        current_buses = []
+    end
+
+    # TODO: If we're interdicting buses, should we report only buses, or the lines and
+    # generators as well? I think it makes sense to report all interdicted components.
+    incumbent = Solution(current_lines, current_gens, current_buses, objective_value, Dict())
 
     return Results(
         iterations, objective_value, bound, run_time, rel_gap, incumbent

@@ -2,11 +2,12 @@
 struct Solution
     lines::Vector{Int}
     generators::Vector{Int}
+    buses::Vector{Int}
     load_shed::Float64 
     stats::Dict{Symbol,Any}
 end 
 
-Solution() = Solution([], [], NaN, Dict())
+Solution() = Solution([], [], [], NaN, Dict())
 
 function Base.show(io::IO, solution::Solution)
     longest_field_name =
