@@ -53,6 +53,10 @@ function parse_commandline()
         arg_type = Int 
         default = 0
 
+        "--interdict_buses",
+        help = "Interdict buses instead of generators and lines directly."
+        action = :store_true
+
         "--inner_solver"
         help = "cplex/gurobi"
         arg_type = String 
@@ -86,7 +90,11 @@ function validate_parameters(params)
         exit() 
     end  
     if (params["use_separate_budgets"])
-        budget_consistency = params["budget"] == params["generator_budget"] + params["line_budget"] 
+        if params["interdict_buses"]
+            @error "use_separate_budgets and interdict_buses cannot both be set"
+            exit()
+        end
+        budget_consistency = params["budget"] == params["generator_budget"] + params["line_budget"]
         if budget_consistency == false 
             k = params["budget"] 
             g = params["generator_budget"] 
