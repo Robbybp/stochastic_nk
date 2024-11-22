@@ -4,10 +4,15 @@ function get_inner_solution(data, ref, generators::Vector, lines::Vector, scenar
 end 
 
 """ Get load shed and power flow solution with fractional interdictable components & scenarios """ 
-function get_inner_solution(data, ref, 
-    generators::Dict{Int,Float64}, lines::Dict{Int,Float64}, 
-    scenario_generators::Dict{Int,Float64}, scenario_lines::Dict{Int,Float64};
-    solver::String="cplex")::NamedTuple 
+function get_inner_solution(
+    data,
+    ref,
+    generators::Dict{Int,Float64},
+    lines::Dict{Int,Float64},
+    scenario_generators::Dict{Int,Float64},
+    scenario_lines::Dict{Int,Float64};
+    solver::String="cplex"
+)::NamedTuple
     case = deepcopy(data) 
     # deepcopy and turn-off scenario and interdicted components with value 1.0 
     for (i, val) in scenario_generators 
@@ -37,7 +42,15 @@ function get_inner_solution(data, ref,
 end 
 
 """ Get load shed and power flow solution on interdictable components""" 
-function get_inner_solution(data, ref, generators::Vector, lines::Vector; use_pm::Bool=false, solver="cplex")::NamedTuple
+# This is the method we use in solve_deterministic
+function get_inner_solution(
+    data,
+    ref,
+    generators::Vector,
+    lines::Vector;
+    use_pm::Bool=false,
+    solver="cplex",
+)::NamedTuple
     case_data = data
     # deepcopy and turn-off interdicted components 
     case = deepcopy(case_data)
@@ -49,6 +62,7 @@ function get_inner_solution(data, ref, generators::Vector, lines::Vector; use_pm
     end 
     PowerModels.propagate_topology_status!(case)
 
+    # solve_deterministic does not use inner_problem
     if use_pm
         lp_optimizer = if solver == "cplex"
             JuMP.optimizer_with_attributes(() -> CPLEX.Optimizer(), "CPX_PARAM_SCRIND" => 0)
@@ -82,7 +96,7 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
         () -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0
     )
     model = Model(lp_optimizer)
-    
+
     @variable(model, va[i in keys(ref[:bus])])
     @variable(model, 
         ref[:gen][i]["pmin"] <= 
@@ -111,10 +125,10 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
         for (l,dcline) in ref[:dcline]
             f_idx = (l, dcline["f_bus"], dcline["t_bus"])
             t_idx = (l, dcline["t_bus"], dcline["f_bus"])
-    
+
             JuMP.set_lower_bound(p_dc[f_idx], dcline["pminf"])
             JuMP.set_upper_bound(p_dc[f_idx], dcline["pmaxf"])
-    
+
             JuMP.set_lower_bound(p_dc[t_idx], dcline["pmint"])
             JuMP.set_upper_bound(p_dc[t_idx], dcline["pmaxt"])
         end
@@ -124,7 +138,7 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
             @constraint(model, 
                 (1-dcline["loss1"])*p_dc[f_idx] + (p_dc[t_idx] - dcline["loss0"]) == 0,
                 base_name = "c_dc_line($i)"
-                )
+            )
         end
     end 
 
@@ -211,16 +225,21 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
     return (load_shed = total_pd + total_gs, pg = pg_values, p = p_values)
 end 
 
-function run_dc_ls(case::Dict, original_ref::Dict, 
-    scenario_generators::Dict{Int,Float64}, scenario_lines::Dict{Int,Float64}, 
-    optimizer; add_dc_lines_model::Bool=false)::NamedTuple
+function run_dc_ls(
+    case::Dict,
+    original_ref::Dict, 
+    scenario_generators::Dict{Int,Float64},
+    scenario_lines::Dict{Int,Float64}, 
+    optimizer;
+    add_dc_lines_model::Bool=false,
+)::NamedTuple
 
     PowerModels.standardize_cost_terms!(case, order=2)
     PowerModels.calc_thermal_limits!(case)
     ref = PowerModels.build_ref(case)[:it][:pm][:nw][0]
 
     model = Model(optimizer)
-    
+
     @variable(model, va[i in keys(ref[:bus])])
     @variable(model, 
         ref[:gen][i]["pmin"] * (1 - get(scenario_generators, i, 0.0)) <= 
@@ -249,10 +268,10 @@ function run_dc_ls(case::Dict, original_ref::Dict,
         for (l,dcline) in ref[:dcline]
             f_idx = (l, dcline["f_bus"], dcline["t_bus"])
             t_idx = (l, dcline["t_bus"], dcline["f_bus"])
-    
+
             JuMP.set_lower_bound(p_dc[f_idx], dcline["pminf"])
             JuMP.set_upper_bound(p_dc[f_idx], dcline["pmaxf"])
-    
+
             JuMP.set_lower_bound(p_dc[t_idx], dcline["pmint"])
             JuMP.set_upper_bound(p_dc[t_idx], dcline["pmaxt"])
         end
@@ -262,7 +281,7 @@ function run_dc_ls(case::Dict, original_ref::Dict,
             @constraint(model, 
                 (1-dcline["loss1"])*p_dc[f_idx] + (p_dc[t_idx] - dcline["loss0"]) == 0,
                 base_name = "c_dc_line($i)"
-                )
+            )
         end
     end 
 
@@ -270,7 +289,7 @@ function run_dc_ls(case::Dict, original_ref::Dict,
         sum((1 - xd[i]) * load["pd"] for (i, load) in ref[:load]) +
         sum((1 - xs[i]) * shunt["gs"] for (i, shunt) in ref[:shunt]; init=0.0)
     )
-    
+
     for (i, _) in ref[:ref_buses]
         @constraint(model, va[i] == 0)
     end
@@ -363,4 +382,4 @@ function run_dc_ls(case::Dict, original_ref::Dict,
     p_values = Dict(l => abs(JuMP.value(p[(l, i, j)])) for (l, i, j) in ref[:arcs_from])
 
     return (load_shed = total_pd + total_gs, pg = pg_values, p = p_values)
-end 
+end
