@@ -48,16 +48,25 @@ function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
         @constraint(model, sum(x_line) + sum(x_gen) == cliargs["budget"])
     end 
 
-    # Logic constraints: If a bus is interdicted, incident generators and loads
+    # Logic constraints: If a bus is interdicted, incident generators and lines
     # are disrupted.
     if cliargs["interdict_buses"]
         @constraint(model,
-            [i in ref[:bus], (l, ibus, jbus) in ref[:bus_arcs][i]],
-            x_bus[i] <= x_line[l]
+            #[i in keys(ref[:bus]), (l, ibus, jbus) in ref[:bus_arcs][i]],
+            [(l, ibus, jbus) in ref[:arcs]],
+            x_line[l] <= x_bus[ibus] + x_bus[jbus]
         )
         @constraint(model,
-            [i in ref[:bus], g in ref[:bus_gens][i]],
-            x_bus[i] <= x_gen[g]
+            [(l, ibus, jbus) in ref[:arcs]],
+            x_bus[ibus] <= x_line[l]
+        )
+        @constraint(model,
+            [(l, ibus, jbus) in ref[:arcs]],
+            x_bus[jbus] <= x_line[l]
+        )
+        @constraint(model,
+            [i in keys(ref[:bus]), g in ref[:bus_gens][i]],
+            x_bus[i] == x_gen[g]
         )
     end
 
