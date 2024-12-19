@@ -88,7 +88,7 @@ function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
             current_x_bus = Dict(i => JuMP.callback_value(cb_data, x_bus[i]) for i in keys(ref[:bus]))
             current_buses = filter!(z -> last(z) > TOL, current_x_bus) |> keys |> collect
         else
-            current_buses = nothing
+            current_buses = []
         end
         # TODO: Accept current bus status in get_inner_solution
         cut_info = get_inner_solution(
@@ -96,6 +96,7 @@ function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
             ref,
             current_gens,
             current_lines;
+            buses=current_buses,
             solver=cliargs["inner_solver"],
         )
         woods_cut = @build_constraint(

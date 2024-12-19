@@ -41,13 +41,14 @@ function get_inner_solution(
     return run_dc_ls(case, ref, scenario_generators, scenario_lines, lp_optimizer)
 end 
 
-""" Get load shed and power flow solution on interdictable components""" 
+"""Get load shed and power flow solution on interdictable components"""
 # This is the method we use in solve_deterministic
 function get_inner_solution(
     data,
     ref,
     generators::Vector,
     lines::Vector;
+    buses::Vector=[],
     use_pm::Bool=false,
     solver="cplex",
 )::NamedTuple
@@ -60,6 +61,11 @@ function get_inner_solution(
     for i in lines 
         case["branch"][string(i)]["br_status"] = 0
     end 
+    for i in buses
+        # This causes loads to be deactivated, which is what we want
+        # It should also cause shunts to be deactivated?
+        case["bus"][string(i)]["bus_type"] = 4
+    end
     PowerModels.propagate_topology_status!(case)
 
     # solve_deterministic does not use inner_problem
@@ -68,10 +74,12 @@ function get_inner_solution(
             JuMP.optimizer_with_attributes(() -> CPLEX.Optimizer(), "CPX_PARAM_SCRIND" => 0)
         else JuMP.optimizer_with_attributes(() -> Gurobi.Optimizer(GRB_ENV), "LogToConsole" => 0)
         end 
-        
+
         pm = instantiate_model(case, DCPPowerModel, PowerModels._build_mld)
         result = optimize_model!(pm, optimizer = lp_optimizer)
 
+        # TODO: Does this count loads that were deactivated? It shouldn't really
+        # matter because there's nothing we can do about it, but I should know this.
         load_served = [load["pd"] for (_, load) in result["solution"]["load"]] |> sum
         load_shed = case_data["total_load"] - load_served
 
@@ -83,11 +91,13 @@ function get_inner_solution(
             abs(result["solution"]["branch"][string(i)]["pt"])
             ) for i in keys(ref[:branch]) if haskey(result["solution"]["branch"], string(i)) 
         )
+        # TODO: Return bus/shunt info
         return (load_shed = load_shed, pg = pg, p = p)
     end 
     return run_dc_ls(case, ref)
 end 
 
+# This is the method we actually use here (see get_inner_solution above).
 function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=false)::NamedTuple 
     PowerModels.standardize_cost_terms!(case, order=2)
     PowerModels.calc_thermal_limits!(case)
@@ -225,6 +235,7 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
     return (load_shed = total_pd + total_gs, pg = pg_values, p = p_values)
 end 
 
+# NOTE: This is the method used when we have fractional interdiction variables.
 function run_dc_ls(
     case::Dict,
     original_ref::Dict, 
