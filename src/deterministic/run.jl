@@ -15,6 +15,13 @@ function run_deterministic(cliargs::Dict, mp_file::String)::Results
     return solve_deterministic(cliargs, data, ref)
 end 
 
+""" Method that accepts the PowerModels data dictionary directly """
+function run_deterministic(cliargs::Dict, data::Dict{String,Any})::Results
+    add_total_load_info(data)
+    ref = PowerModels.build_ref(data)[:it][:pm][:nw][0]
+    return solve_deterministic(cliargs, data, ref)
+end
+
 """ solve with lazy constraint callback """
 function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
     model = direct_model(Gurobi.Optimizer(GRB_ENV))
@@ -27,13 +34,40 @@ function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
     # interdiction variables
     @variable(model, x_line[i in keys(ref[:branch])], Bin)
     @variable(model, x_gen[i in keys(ref[:gen])], Bin)
-    
+    @variable(model, x_bus[i in keys(ref[:bus])], Bin)
+
     # budget constraints 
-    @constraint(model, sum(x_line) + sum(x_gen) == cliargs["budget"])
     if cliargs["use_separate_budgets"]
         @constraint(model, sum(x_line) == cliargs["line_budget"])
         @constraint(model, sum(x_gen) == cliargs["generator_budget"])
+        @constraint(model, sum(x_bus) == cliargs["bus_budget"])
+    else
+        @constraint(model, sum(x_line) + sum(x_gen) + sum(x_bus) == cliargs["total_budget"])
     end 
+
+    # # Manuel: These constraints seem a little strange. 
+    # # For example, this means that a bus can't be interdicted if it has too many lines connected to it.
+    # # Logic constraints: If a bus is interdicted, incident generators and lines
+    # # are disrupted.
+    # if cliargs["interdict_buses"]
+    #     @constraint(model,
+    #         #[i in keys(ref[:bus]), (l, ibus, jbus) in ref[:bus_arcs][i]],
+    #         [(l, ibus, jbus) in ref[:arcs]],
+    #         x_line[l] <= x_bus[ibus] + x_bus[jbus]
+    #     )
+    #     @constraint(model,
+    #         [(l, ibus, jbus) in ref[:arcs]],
+    #         x_bus[ibus] <= x_line[l]
+    #     )
+    #     @constraint(model,
+    #         [(l, ibus, jbus) in ref[:arcs]],
+    #         x_bus[jbus] <= x_line[l]
+    #     )
+    #     @constraint(model,
+    #         [i in keys(ref[:bus]), g in ref[:bus_gens][i]],
+    #         x_bus[i] == x_gen[g]
+    #     )
+    # end
 
     # objective 
     @objective(model, Max, eta)
@@ -44,11 +78,27 @@ function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
         (status != MOI.CALLBACK_NODE_STATUS_INTEGER) && (return)
         current_x_line = Dict(i => JuMP.callback_value(cb_data, x_line[i]) for i in keys(ref[:branch]))
         current_x_gen = Dict(i => JuMP.callback_value(cb_data, x_gen[i]) for i in keys(ref[:gen]))
+        current_x_bus = Dict(i => JuMP.callback_value(cb_data, x_bus[i]) for i in keys(ref[:bus]))
         current_lines = filter!(z -> last(z) > TOL, current_x_line) |> keys |> collect
         current_gens = filter!(z -> last(z) > TOL, current_x_gen) |> keys |> collect
-        cut_info = get_inner_solution(data, ref, current_gens, current_lines; solver=cliargs["inner_solver"])
-        woods_cut = @build_constraint(eta <= cut_info.load_shed + sum([cut_info.pg[i] * x_gen[i] for i in keys(cut_info.pg)]) + 
-            sum([cut_info.p[i] * x_line[i] for i in keys(cut_info.p)]))
+        current_buses = filter!(z -> last(z) > TOL, current_x_bus) |> keys |> collect
+
+        cut_info = get_inner_solution(
+            data,
+            ref,
+            current_gens,
+            current_lines,
+            current_buses;
+            solver=cliargs["inner_solver"],
+        )
+        woods_cut = @build_constraint(
+            eta <= (
+                cut_info.load_shed
+                + sum([cut_info.pg[i] * x_gen[i] for i in keys(cut_info.pg)])
+                + sum([cut_info.p[i] * x_line[i] for i in keys(cut_info.p)])
+                + sum([cut_info.b[i] * x_bus[i] for i in keys(cut_info.b)])
+            )
+        )
         MOI.submit(model, MOI.LazyConstraint(cb_data), woods_cut)
     end
 
@@ -62,9 +112,14 @@ function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
     rel_gap = JuMP.relative_gap(model)
     current_x_line = Dict(i => JuMP.value(x_line[i]) for i in keys(ref[:branch]))
     current_x_gen = Dict(i => JuMP.value(x_gen[i]) for i in keys(ref[:gen]))
+    current_x_bus = Dict(i => JuMP.value(x_bus[i]) for i in keys(ref[:bus]))
     current_lines = filter!(z -> last(z) > TOL, current_x_line) |> keys |> collect
     current_gens = filter!(z -> last(z) > TOL, current_x_gen) |> keys |> collect
-    incumbent = Solution(current_lines, current_gens, objective_value, Dict())
+    current_buses = filter!(z -> last(z) > TOL, current_x_bus) |> keys |> collect
+
+    # TODO: If we're interdicting buses, should we report only buses, or the lines and
+    # generators as well? I think it makes sense to report all interdicted components.
+    incumbent = Solution(current_lines, current_gens, current_buses, objective_value, Dict())
 
     return Results(
         iterations, objective_value, bound, run_time, rel_gap, incumbent

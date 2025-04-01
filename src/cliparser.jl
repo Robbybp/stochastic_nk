@@ -53,6 +53,10 @@ function parse_commandline()
         arg_type = Int 
         default = 0
 
+        "--interdict_buses",
+        help = "Interdict buses instead of generators and lines directly."
+        action = :store_true
+
         "--inner_solver"
         help = "cplex/gurobi"
         arg_type = String 
@@ -77,21 +81,27 @@ function parse_commandline()
     return parse_args(s)
 end
 
-function validate_parameters(params)
-    mkpath(params["data_path"])
-    mkpath(params["output_path"])
-    case_file = params["data_path"] * "matpower/" * params["case"]
-    if isfile(case_file) == false
-        @error "$case_file does not exist, quitting."
-        exit() 
-    end  
+function validate_parameters(params; skip_path_validation::Bool = false)
+    # I want a version of this code that does not interact so much with the
+    # filesystem. I will handle IO myself at a higher level.
+    # TODO: How exactly should I handle this slightly different interface?
+    if skip_path_validation
+        mkpath(params["data_path"])
+        mkpath(params["output_path"])
+        case_file = params["data_path"] * "matpower/" * params["case"]
+        if isfile(case_file) == false
+            @error "$case_file does not exist, quitting."
+            exit() 
+        end  
+    end
     if (params["use_separate_budgets"])
-        budget_consistency = params["budget"] == params["generator_budget"] + params["line_budget"] 
+        budget_consistency = params["total_budget"] == params["generator_budget"] + params["line_budget"] + params["bus_budget"]
         if budget_consistency == false 
             k = params["budget"] 
+            b = params["bus_budget"] 
             g = params["generator_budget"] 
             l = params["line_budget"] 
-            @error "line budget ($l) + generator budget ($g) does not equal the budget ($k), quitting."
+            @error "line budget ($l) + generator budget ($g) + bus budget ($b) does not equal the budget ($k), quitting."
             exit()
         end 
     end 
