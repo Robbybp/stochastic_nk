@@ -95,13 +95,10 @@ function validate_parameters(params; skip_path_validation::Bool = false)
             exit() 
         end  
     end
-    if params["bus_budget"] > 0 && params["generator_budget"] + params["line_budget"] > 1
+    if params["bus_budget"] > 0 && params["generator_budget"] + params["line_budget"] > 0
         error("Cannot specify a bus budget and a generator or line budget")
     end
     if (params["use_separate_budgets"])
-        if params["bus_budget"] > 0
-            error("Cannot specify a bus budget while using separate budgets")
-        end
         budget_consistency = params["total_budget"] == params["generator_budget"] + params["line_budget"] + params["bus_budget"]
         if budget_consistency == false 
             k = params["budget"] 
