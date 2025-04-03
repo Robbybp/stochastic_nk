@@ -58,10 +58,6 @@ function parse_commandline()
         arg_type = Int 
         default = 0
 
-        "--interdict_buses",
-        help = "Interdict buses instead of generators and lines directly."
-        action = :store_true
-
         "--inner_solver"
         help = "cplex/gurobi"
         arg_type = String 
