@@ -43,6 +43,11 @@ function parse_commandline()
         help = "use separate line and generator budgets" 
         action = :store_true 
 
+        "--bus_budget"
+        help = "budget for buses. CANNOT BE USED WITH --line_budget OR --generator_budget"
+        arg_type = Int 
+        default = 0
+
         "--line_budget", "-l"
         help = "budget for lines"
         arg_type = Int 
@@ -94,7 +99,13 @@ function validate_parameters(params; skip_path_validation::Bool = false)
             exit() 
         end  
     end
+    if params["bus_budget"] > 0 && params["generator_budget"] + params["line_budget"] > 1
+        error("Cannot specify a bus budget and a generator or line budget")
+    end
     if (params["use_separate_budgets"])
+        if params["bus_budget"] > 0
+            error("Cannot specify a bus budget while using separate budgets")
+        end
         budget_consistency = params["total_budget"] == params["generator_budget"] + params["line_budget"] + params["bus_budget"]
         if budget_consistency == false 
             k = params["budget"] 
