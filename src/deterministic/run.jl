@@ -37,10 +37,10 @@ function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
     @variable(model, x_bus[i in keys(ref[:bus])], Bin)
 
     # budget constraints 
+    @constraint(model, sum(x_bus) == cliargs["bus_budget"])
     if cliargs["use_separate_budgets"]
         @constraint(model, sum(x_line) == cliargs["line_budget"])
         @constraint(model, sum(x_gen) == cliargs["generator_budget"])
-        @constraint(model, sum(x_bus) == cliargs["bus_budget"])
     else
         @constraint(model, sum(x_line) + sum(x_gen) + sum(x_bus) == cliargs["total_budget"])
     end 
