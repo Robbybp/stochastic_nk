@@ -45,30 +45,6 @@ function solve_deterministic(cliargs::Dict, data::Dict, ref::Dict)::Results
         @constraint(model, sum(x_line) + sum(x_gen) + sum(x_bus) == cliargs["total_budget"])
     end 
 
-    # # Manuel: These constraints seem a little strange. 
-    # # For example, this means that a bus can't be interdicted if it has too many lines connected to it.
-    # # Logic constraints: If a bus is interdicted, incident generators and lines
-    # # are disrupted.
-    # if cliargs["interdict_buses"]
-    #     @constraint(model,
-    #         #[i in keys(ref[:bus]), (l, ibus, jbus) in ref[:bus_arcs][i]],
-    #         [(l, ibus, jbus) in ref[:arcs]],
-    #         x_line[l] <= x_bus[ibus] + x_bus[jbus]
-    #     )
-    #     @constraint(model,
-    #         [(l, ibus, jbus) in ref[:arcs]],
-    #         x_bus[ibus] <= x_line[l]
-    #     )
-    #     @constraint(model,
-    #         [(l, ibus, jbus) in ref[:arcs]],
-    #         x_bus[jbus] <= x_line[l]
-    #     )
-    #     @constraint(model,
-    #         [i in keys(ref[:bus]), g in ref[:bus_gens][i]],
-    #         x_bus[i] == x_gen[g]
-    #     )
-    # end
-
     # objective 
     @objective(model, Max, eta)
     TOL = 1E-6
