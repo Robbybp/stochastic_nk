@@ -43,6 +43,11 @@ function parse_commandline()
         help = "use separate line and generator budgets" 
         action = :store_true 
 
+        "--bus_budget"
+        help = "budget for buses. CANNOT BE USED WITH --line_budget OR --generator_budget"
+        arg_type = Int 
+        default = 0
+
         "--line_budget", "-l"
         help = "budget for lines"
         arg_type = Int 
@@ -52,10 +57,6 @@ function parse_commandline()
         help = "budget for generators"
         arg_type = Int 
         default = 0
-
-        "--interdict_buses",
-        help = "Interdict buses instead of generators and lines directly."
-        action = :store_true
 
         "--inner_solver"
         help = "cplex/gurobi"
@@ -94,17 +95,17 @@ function validate_parameters(params; skip_path_validation::Bool = false)
             exit() 
         end  
     end
+    if params["bus_budget"] > 0 && params["generator_budget"] + params["line_budget"] > 0
+        error("Cannot specify a bus budget and a generator or line budget")
+    end
     if (params["use_separate_budgets"])
-        if params["interdict_buses"]
-            @error "use_separate_budgets and interdict_buses cannot both be set"
-            exit()
-        end
-        budget_consistency = params["budget"] == params["generator_budget"] + params["line_budget"]
+        budget_consistency = params["total_budget"] == params["generator_budget"] + params["line_budget"] + params["bus_budget"]
         if budget_consistency == false 
             k = params["budget"] 
+            b = params["bus_budget"] 
             g = params["generator_budget"] 
             l = params["line_budget"] 
-            @error "line budget ($l) + generator budget ($g) does not equal the budget ($k), quitting."
+            @error "line budget ($l) + generator budget ($g) + bus budget ($b) does not equal the budget ($k), quitting."
             exit()
         end 
     end 

@@ -47,8 +47,8 @@ function get_inner_solution(
     data,
     ref,
     generators::Vector,
-    lines::Vector;
-    buses::Vector=[],
+    lines::Vector,
+    buses::Vector;
     use_pm::Bool=false,
     solver="cplex",
 )::NamedTuple
@@ -62,8 +62,8 @@ function get_inner_solution(
         case["branch"][string(i)]["br_status"] = 0
     end 
     for i in buses
-        # This causes loads to be deactivated, which is what we want
-        # It should also cause shunts to be deactivated?
+        # This causes loads, generators, and connected lines to change their status to 0, which is what we want
+        # Does this cause shunts to be deactivated?  
         case["bus"][string(i)]["bus_type"] = 4
     end
     PowerModels.propagate_topology_status!(case)
@@ -231,8 +231,9 @@ function run_dc_ls(case::Dict, original_ref::Dict; add_dc_lines_model::Bool=fals
     total_gs = isolated_shunt_shed + sum(values(shunt_shed); init=0.0)
     pg_values = Dict(i => JuMP.value(pg[i]) for i in keys(ref[:gen]))
     p_values = Dict(l => abs(JuMP.value(p[(l, i, j)])) for (l, i, j) in ref[:arcs_from])
+    b_values = Dict(b => (reduce(+,[JuMP.value(pg[g]) for g in bg_dict], init=0.0) - reduce(+, [JuMP.value(p_expr[a]) for a in ref[:bus_arcs][b]], init=0.0)) for (b,bg_dict) in ref[:bus_gens])
 
-    return (load_shed = total_pd + total_gs, pg = pg_values, p = p_values)
+    return (load_shed = total_pd + total_gs, pg = pg_values, p = p_values, b = b_values)
 end 
 
 # NOTE: This is the method used when we have fractional interdiction variables.
